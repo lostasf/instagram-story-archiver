@@ -1,7 +1,7 @@
 import requests
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -17,29 +17,61 @@ class InstagramAPI:
             'Content-Type': 'application/json'
         }
     
-    def get_user_stories(self, username: str) -> Optional[Dict]:
+    def _parse_story_items(self, payload: Optional[Any]) -> List[Dict]:
+        if payload is None:
+            return []
+        
+        if isinstance(payload, list):
+            items: List[Dict] = []
+            for entry in payload:
+                if isinstance(entry, dict):
+                    if any(key in entry for key in ('pk', 'id', 'image_versions2', 'video_versions')):
+                        items.append(entry)
+                    else:
+                        items.extend(self._parse_story_items(entry))
+            return items
+        
+        if isinstance(payload, dict):
+            if 'result' in payload:
+                return self._parse_story_items(payload.get('result'))
+            
+            aggregated: List[Dict] = []
+            for key in ('items', 'stories', 'reels_media', 'tray', 'media', 'data'):
+                if key in payload:
+                    aggregated.extend(self._parse_story_items(payload.get(key)))
+            if aggregated:
+                return aggregated
+            
+            if any(key in payload for key in ('pk', 'id', 'image_versions2', 'video_versions')):
+                return [payload]
+        
+        return []
+    
+    def get_user_stories(self, username: str) -> Optional[List[Dict]]:
         """
-        Fetch stories for a given Instagram username using user search.
+        Fetch all active stories for a given Instagram username.
         """
         try:
             logger.info(f"Fetching stories for user: {username}")
             
-            # First, try to get user info to verify the username exists
-            user_url = f"{self.base_url}/api/instagram/user"
-            user_payload = {"username": username}
+            stories_url = f"{self.base_url}/api/instagram/stories"
+            payload = {"username": username}
             
             response = requests.post(
-                user_url,
-                json=user_payload,
+                stories_url,
+                json=payload,
                 headers=self.headers,
                 timeout=10
             )
             response.raise_for_status()
             
-            user_data = response.json()
-            logger.debug(f"User data response: {json.dumps(user_data, indent=2)[:500]}")
+            story_data = response.json()
+            logger.debug(f"Stories response: {json.dumps(story_data, indent=2)[:500]}")
             
-            return user_data
+            stories = self._parse_story_items(story_data)
+            logger.info(f"Found {len(stories)} active stories for {username}")
+            
+            return stories
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching user stories: {e}")
@@ -80,19 +112,16 @@ class InstagramAPI:
         """
         media_list = []
         
-        if not story_data or 'result' not in story_data:
+        results = self._parse_story_items(story_data)
+        if not results:
             logger.warning("No result in story data")
             return media_list
-        
-        results = story_data.get('result', [])
-        if isinstance(results, dict):
-            results = [results]
         
         for item in results:
             if not isinstance(item, dict):
                 continue
             
-            story_id = item.get('pk')
+            story_id = item.get('pk') or item.get('id')
             media_type = 'image'
             url = None
             

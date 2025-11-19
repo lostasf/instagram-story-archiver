@@ -25,7 +25,9 @@ def test_config():
         config.validate()
         logger.info("✓ Configuration loaded successfully")
         logger.info(f"  - Instagram Username: {config.INSTAGRAM_USERNAME}")
-        logger.info(f"  - Check Interval: {config.CHECK_INTERVAL_HOURS} hour(s)")
+        interval = getattr(config, 'CHECK_INTERVAL_HOURS', None)
+        if interval is not None:
+            logger.info(f"  - Check Interval: {interval} hour(s)")
         logger.info(f"  - Archive DB: {config.ARCHIVE_DB_PATH}")
         logger.info(f"  - Media Cache: {config.MEDIA_CACHE_DIR}")
         return config
@@ -41,15 +43,18 @@ def test_instagram_api(config):
         api = InstagramAPI(config)
         logger.info("✓ Instagram API initialized")
         
-        # Try to fetch user info
-        user_data = api.get_user_stories(config.INSTAGRAM_USERNAME)
-        if user_data:
-            logger.info(f"✓ Successfully connected to Instagram API")
-            logger.info(f"  Response keys: {list(user_data.keys())}")
-            return True
-        else:
-            logger.warning("⚠ Instagram API returned no data (may need valid story ID)")
-            return True
+        # Try to fetch active stories
+        stories = api.get_user_stories(config.INSTAGRAM_USERNAME)
+        if stories is None:
+            logger.error("✗ Failed to fetch stories from Instagram API")
+            return False
+        
+        story_count = len(stories)
+        logger.info("✓ Successfully connected to Instagram API")
+        logger.info(f"  Active stories found: {story_count}")
+        if story_count == 0:
+            logger.warning("⚠ No active stories available right now (this is normal if the user has none)")
+        return True
     except Exception as e:
         logger.error(f"✗ Instagram API error: {e}")
         return False

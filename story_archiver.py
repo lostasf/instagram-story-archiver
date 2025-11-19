@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 from config import Config
@@ -23,13 +23,14 @@ class StoryArchiver:
         self.media_manager = MediaManager(config.MEDIA_CACHE_DIR)
         self.archive_manager = ArchiveManager(config.ARCHIVE_DB_PATH)
     
-    def process_story(self, username: str, story_id: str) -> bool:
+    def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
         """
         Process a single story: download media and post to Twitter thread.
         
         Args:
             username: Instagram username
             story_id: Story ID from Instagram
+            story_payload: Optional pre-fetched story data to avoid extra API calls
         
         Returns:
             True if successful, False otherwise
@@ -42,8 +43,8 @@ class StoryArchiver:
                 logger.info(f"Story {story_id} already archived, skipping")
                 return False
             
-            # Fetch story from Instagram
-            story_data = self.instagram_api.get_story_by_id(username, story_id)
+            # Fetch story from Instagram when payload is not provided
+            story_data = story_payload if story_payload is not None else self.instagram_api.get_story_by_id(username, story_id)
             if not story_data:
                 logger.error(f"Failed to fetch story {story_id}")
                 return False
@@ -156,24 +157,54 @@ class StoryArchiver:
             Number of stories successfully archived
         """
         try:
-            logger.info(f"Starting story check for {self.config.INSTAGRAM_USERNAME}")
+            username = self.config.INSTAGRAM_USERNAME
+            logger.info(f"Starting story check for {username}")
             
-            # Get user information
-            user_data = self.instagram_api.get_user_stories(self.config.INSTAGRAM_USERNAME)
-            if not user_data:
-                logger.error("Failed to fetch user data")
+            stories = self.instagram_api.get_user_stories(username)
+            if stories is None:
+                logger.error("Failed to fetch stories from Instagram API")
                 return 0
             
-            # In a real scenario, you would extract story IDs from user_data
-            # This is a simplified version that processes a single story
-            # The actual implementation depends on what the API returns
+            story_items = [story for story in stories if isinstance(story, dict)]
             
-            logger.info(f"Story check completed for {self.config.INSTAGRAM_USERNAME}")
+            def _story_timestamp(item: Dict) -> int:
+                value = item.get('taken_at') or 0
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return 0
+            
+            story_items.sort(key=_story_timestamp)
+            logger.info(f"Found {len(story_items)} stories to evaluate")
+            
+            archived_ids = {str(sid) for sid in self.archive_manager.get_archived_story_ids() if sid is not None}
+            processed_count = 0
+            
+            if not story_items:
+                logger.info("No active stories available at this time")
+            
+            for story in story_items:
+                story_id = story.get('pk') or story.get('id')
+                if not story_id:
+                    logger.debug("Skipping story without an ID")
+                    continue
+                
+                story_id = str(story_id)
+                if story_id in archived_ids:
+                    logger.info(f"Story {story_id} already archived, skipping")
+                    continue
+                
+                if self.process_story(username, story_id, story_payload=story):
+                    processed_count += 1
+                    archived_ids.add(story_id)
+            
+            logger.info(f"Story check completed for {username}")
+            logger.info(f"New stories archived: {processed_count}")
             
             stats = self.archive_manager.get_statistics()
             logger.info(f"Archive statistics: {stats['total_stories']} stories, {stats['total_media']} media items")
             
-            return 0
+            return processed_count
             
         except Exception as e:
             logger.error(f"Error archiving stories: {e}", exc_info=True)
