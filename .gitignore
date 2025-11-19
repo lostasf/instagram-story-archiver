@@ -43,8 +43,6 @@ env/
 .DS_Store
 
 # Project-specific
-archive.json
-archiver.log
 media_cache/
 *.pyc
 .pytest_cache/
