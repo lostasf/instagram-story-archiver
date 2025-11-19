@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  archiver:
+    build: .
+    container_name: gendis-story-archiver
+    environment:
+      - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+      - RAPIDAPI_HOST=${RAPIDAPI_HOST}
+      - TWITTER_API_KEY=${TWITTER_API_KEY}
+      - TWITTER_API_SECRET=${TWITTER_API_SECRET}
+      - TWITTER_ACCESS_TOKEN=${TWITTER_ACCESS_TOKEN}
+      - TWITTER_ACCESS_SECRET=${TWITTER_ACCESS_SECRET}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
+      - INSTAGRAM_USERNAME=${INSTAGRAM_USERNAME:-jkt48.gendis}
+    volumes:
+      - ./archive.json:/app/archive.json
+      - ./archiver.log:/app/archiver.log
+      - ./media_cache:/app/media_cache
+    # Note: This runs once per container start
+    # For scheduled runs, use GitHub Actions (see .github/workflows/archive-stories.yml)
+    # Or use: docker-compose run archiver
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
