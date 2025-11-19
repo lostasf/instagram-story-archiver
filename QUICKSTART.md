@@ -1,50 +1,66 @@
 # Quick Start Guide
 
-Get the Instagram Story Archiver running in 5 minutes!
+Get the Instagram Story Archiver running in 3 minutes using GitHub Actions! 🚀
 
-## Prerequisites
+## Option 1: GitHub Actions (Recommended) ⭐
 
-- Python 3.8 or higher
-- Instagram API key from RapidAPI (free tier: 1000 requests/month)
-- Twitter API v2 credentials with media upload permissions
+No local setup required - runs automatically every hour!
 
-## Setup Steps
+### 1. Fork Repository (30 seconds)
 
-### 1. Install Dependencies (1 minute)
+Click the "Fork" button to create your own copy.
+
+### 2. Add Secrets (1 minute)
+
+Go to **Settings → Secrets and variables → Actions**
+
+Add these **Secrets**:
+```
+RAPIDAPI_KEY=your_key
+TWITTER_API_KEY=your_key
+TWITTER_API_SECRET=your_secret
+TWITTER_ACCESS_TOKEN=your_token
+TWITTER_ACCESS_SECRET=your_secret
+TWITTER_BEARER_TOKEN=your_bearer_token
+```
+
+Add this **Variable**:
+```
+INSTAGRAM_USERNAME=jkt48.gendis
+```
+
+### 3. Done! ✅
+
+Go to **Actions** tab and watch it run automatically every hour.
+
+**Learn more:** [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
+
+---
+
+## Option 2: Local Development
+
+### 1. Install Dependencies
 
 ```bash
+git clone <repository>
+cd gendis-instagram-story-archiver
 pip install -r requirements.txt
 ```
 
-### 2. Configure API Keys (2 minutes)
+### 2. Configure API Keys
 
 ```bash
 cp .env.example .env
+nano .env  # Edit with your credentials
 ```
 
-Then edit `.env` with your credentials:
-
-```bash
-nano .env  # or use your favorite editor
-```
-
-Required credentials:
-```env
-RAPIDAPI_KEY=your_key_here
-TWITTER_API_KEY=your_key_here
-TWITTER_API_SECRET=your_secret_here
-TWITTER_ACCESS_TOKEN=your_token_here
-TWITTER_ACCESS_SECRET=your_secret_here
-TWITTER_BEARER_TOKEN=your_bearer_token_here
-```
-
-### 3. Test Configuration (1 minute)
+### 3. Test Setup
 
 ```bash
 python test_setup.py
 ```
 
-Should output:
+Should show:
 ```
 ✓ Configuration loaded successfully
 ✓ Successfully connected to Instagram API
@@ -52,13 +68,11 @@ Should output:
 ✓ All tests passed! Ready to start archiving.
 ```
 
-### 4. Start Archiving (Instant!)
+### 4. Run Once
 
 ```bash
 python main.py
 ```
-
-Will continuously check for new stories every hour.
 
 ## Common Commands
 

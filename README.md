@@ -2,103 +2,70 @@
 
 Archive Instagram stories from `jkt48.gendis` and automatically post them to Twitter/X in organized threads.
 
-## Features
+## ✨ Features
 
-- 📸 **Automatic Story Archiving**: Fetches new stories from Instagram every hour
+- 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every hour
 - 🐦 **Twitter Thread Creation**: Posts each story as a thread with media
 - 💾 **Archive Database**: Keeps track of all archived stories
-- ⚙️ **Scheduled Execution**: Runs automatically on a configurable interval
+- ⚙️ **Scheduled via GitHub Actions**: Runs automatically every hour
 - 🖼️ **Media Optimization**: Automatically compresses images to meet Twitter size limits
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
+- 🔄 **Auto-commit**: Archive updates tracked in git history
 
-## Requirements
+## 🚀 Quick Start (GitHub Actions)
 
-- Python 3.8+
-- Instagram API access via RapidAPI (1000 requests/month)
-- Twitter API v2 access with media upload permissions
+### 1. Fork Repository
 
-## Setup
+Click the "Fork" button on GitHub to create your own copy.
 
-### 1. Clone and Install Dependencies
+### 2. Add Secrets
+
+Go to **Settings → Secrets and variables → Actions** and add:
+
+**Secrets:**
+- `RAPIDAPI_KEY` - Your RapidAPI Instagram key
+- `TWITTER_API_KEY` - Twitter Consumer Key
+- `TWITTER_API_SECRET` - Twitter Consumer Secret
+- `TWITTER_ACCESS_TOKEN` - Twitter Access Token
+- `TWITTER_ACCESS_SECRET` - Twitter Access Token Secret
+- `TWITTER_BEARER_TOKEN` - Twitter Bearer Token
+
+**Variables:**
+- `INSTAGRAM_USERNAME` - `jkt48.gendis` (or target account)
+
+### 3. Done! 🎉
+
+The workflow runs automatically every hour. Check the **Actions** tab to see runs.
+
+For detailed setup, see [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
+
+## 💻 Local Development
+
+### Setup
 
 ```bash
 git clone <repository>
 cd gendis-instagram-story-archiver
 pip install -r requirements.txt
-```
-
-### 2. Configure API Credentials
-
-Copy the example configuration and fill in your credentials:
-
-```bash
 cp .env.example .env
+# Edit .env with your credentials
 ```
 
-Edit `.env` with your credentials:
-
-```env
-# RapidAPI Instagram Configuration
-RAPIDAPI_KEY=your_api_key_here
-RAPIDAPI_HOST=instagram120.p.rapidapi.com
-
-# Twitter/X API Configuration
-TWITTER_API_KEY=your_api_key
-TWITTER_API_SECRET=your_api_secret
-TWITTER_ACCESS_TOKEN=your_access_token
-TWITTER_ACCESS_SECRET=your_access_secret
-TWITTER_BEARER_TOKEN=your_bearer_token
-
-# Configuration
-INSTAGRAM_USERNAME=jkt48.gendis
-CHECK_INTERVAL_HOURS=1
-ARCHIVE_DB_PATH=./archive.json
-MEDIA_CACHE_DIR=./media_cache
-```
-
-### 3. Get API Credentials
-
-#### Instagram API (RapidAPI)
-
-1. Go to [RapidAPI](https://rapidapi.com)
-2. Search for "Instagram" and select an Instagram API
-3. Subscribe to the free tier (1000 requests/month)
-4. Copy your API key and host from the API dashboard
-
-#### Twitter API v2
-
-1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
-2. Create a new app or use an existing one
-3. Generate API keys and access tokens with media upload permissions
-4. Enable OAuth 1.0a user context authentication
-
-## Usage
-
-### Run Once
+### Usage
 
 ```bash
-python main.py --once
-```
-
-### Archive Specific Story
-
-```bash
-python main.py --story-id <story_id>
-```
-
-### View Archive Status
-
-```bash
-python main.py --status
-```
-
-### Start Scheduled Archiver (Default)
-
-```bash
+# Run once (as GitHub Actions does)
 python main.py
-```
 
-This will run indefinitely, checking for new stories every hour.
+# Archive specific story
+python main.py --story-id <story_id>
+
+# View archive statistics
+python main.py --status
+
+# Test setup
+python test_setup.py
+```
 
 ## How It Works
 

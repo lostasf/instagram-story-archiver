@@ -14,7 +14,6 @@ class Config:
     TWITTER_BEARER_TOKEN = os.getenv('TWITTER_BEARER_TOKEN')
     
     INSTAGRAM_USERNAME = os.getenv('INSTAGRAM_USERNAME', 'jkt48.gendis')
-    CHECK_INTERVAL_HOURS = int(os.getenv('CHECK_INTERVAL_HOURS', '1'))
     ARCHIVE_DB_PATH = os.getenv('ARCHIVE_DB_PATH', './archive.json')
     MEDIA_CACHE_DIR = os.getenv('MEDIA_CACHE_DIR', './media_cache')
     
