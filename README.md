@@ -101,10 +101,14 @@ Each archived story becomes a Twitter thread:
 ├── twitter_api.py          # Twitter API wrapper
 ├── media_manager.py        # Media download and compression
 ├── archive_manager.py      # Archive database management
+├── test_setup.py           # Configuration and API verification
+├── diagnose_twitter_oauth.py # Twitter OAuth diagnostic tool
 ├── requirements.txt        # Python dependencies
 ├── .env.example            # Example configuration
+├── TWITTER_OAUTH_FIX.md    # Twitter OAuth permissions fix guide
 ├── archive.json            # Archive database (auto-created)
 ├── archiver.log            # Application logs
+├── test_media.jpg          # Test media for OAuth verification
 └── media_cache/            # Temporary media storage (auto-created)
 ```
 
@@ -148,6 +152,19 @@ The archiver is resilient to errors:
 
 ## Troubleshooting
 
+### "403 Forbidden - OAuth1 app permissions" (COMMON)
+
+**Problem**: `Your client app is not configured with the appropriate oauth1 app permissions for this endpoint`
+
+**Quick Fix**:
+1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+2. Select your app → **App permissions** → Set to **"Read and Write"**
+3. Go to **Keys and tokens** → **Regenerate** Access Token and Secret
+4. Update your `.env` file with new tokens
+5. Run `python diagnose_twitter_oauth.py` to verify
+
+**Detailed instructions**: See [TWITTER_OAUTH_FIX.md](TWITTER_OAUTH_FIX.md)
+
 ### "Rate limit exceeded"
 
 - Increase `CHECK_INTERVAL_HOURS` to reduce API calls
@@ -159,6 +176,7 @@ The archiver is resilient to errors:
 - Ensure images are under 5MB (auto-compressed)
 - Check Twitter API permissions include media upload
 - Verify `TWITTER_BEARER_TOKEN` is correct
+- Use `python diagnose_twitter_oauth.py` to test permissions
 
 ### "Story already archived"
 
@@ -171,6 +189,16 @@ The archiver is resilient to errors:
 - Check internet connection
 - Verify API endpoints are accessible
 - Increase timeout values in code if needed
+
+### Diagnostic Tools
+
+```bash
+# Test all configurations and API connections
+python test_setup.py
+
+# Diagnose Twitter OAuth permissions specifically
+python diagnose_twitter_oauth.py
+```
 
 ## Performance Notes
 

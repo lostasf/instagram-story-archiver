@@ -92,7 +92,7 @@ class StoryArchiver:
             archive_data = {
                 'media_count': len(downloaded_media),
                 'media_urls': [m['url'] for m in media_list],
-                'tweet_ids': [tweets] if isinstance(tweets, str) else tweets
+                'tweet_ids': tweet_ids
             }
             
             self.archive_manager.add_story(story_id, archive_data)
