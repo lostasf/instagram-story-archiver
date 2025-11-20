@@ -5,6 +5,7 @@ Run this before starting the main application.
 """
 
 import sys
+import os
 import logging
 from config import Config
 from instagram_api import InstagramAPI
@@ -72,12 +73,33 @@ def test_twitter_api(config):
         if user and user.data:
             logger.info(f"✓ Successfully authenticated to Twitter API")
             logger.info(f"  - Username: @{user.data.username}")
+            
+            # Test media upload permissions (if we have a test file)
+            test_media_path = "./test_media.jpg"
+            if os.path.exists(test_media_path):
+                logger.info("Testing media upload permissions...")
+                media_id = api.upload_media(test_media_path)
+                if media_id:
+                    logger.info("✓ Media upload permissions verified")
+                else:
+                    logger.warning("⚠ Media upload failed - check OAuth 1.0a permissions")
+                    logger.warning("  See TWITTER_OAUTH_FIX.md for instructions")
+            else:
+                logger.info("  (Skipping media upload test - no test file found)")
+                logger.info("  Create a test image file to verify media upload permissions")
+            
             return True
         else:
             logger.error("✗ Failed to authenticate with Twitter API")
             return False
     except Exception as e:
-        logger.error(f"✗ Twitter API error: {e}")
+        error_msg = str(e).lower()
+        if "oauth1 app permissions" in error_msg or "403" in error_msg:
+            logger.error("✗ Twitter OAuth 1.0a permission error detected")
+            logger.error("  Please see TWITTER_OAUTH_FIX.md for detailed instructions")
+            logger.error("  Summary: Update app permissions to 'Read and Write' and regenerate tokens")
+        else:
+            logger.error(f"✗ Twitter API error: {e}")
         return False
 
 

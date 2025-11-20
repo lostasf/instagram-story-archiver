@@ -2,6 +2,7 @@ import tweepy
 import logging
 from typing import List, Optional
 import os
+import time
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ class TwitterAPI:
             wait_on_rate_limit=True
         )
         
+        # Keep v1 client only for media upload as fallback
         self.v1_client = tweepy.API(
             auth=tweepy.OAuth1UserHandler(
                 config.TWITTER_API_KEY,
@@ -32,15 +34,47 @@ class TwitterAPI:
     def upload_media(self, media_path: str) -> Optional[str]:
         """
         Upload media to Twitter and return media ID.
+        Uses OAuth 1.0a for media upload with better error handling.
         """
         try:
             logger.info(f"Uploading media: {media_path}")
             
-            media = self.v1_client.media_upload(filename=media_path)
-            media_id = media.media_id_string
+            # Check file size (Twitter limit is 5MB for images, 15MB for videos)
+            file_size = os.path.getsize(media_path)
+            if file_size > 15 * 1024 * 1024:  # 15MB
+                logger.error(f"File too large: {file_size} bytes (max 15MB)")
+                return None
             
-            logger.info(f"Media uploaded successfully. ID: {media_id}")
-            return media_id
+            # Try media upload with retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    media = self.v1_client.media_upload(filename=media_path)
+                    media_id = media.media_id_string
+                    
+                    logger.info(f"Media uploaded successfully. ID: {media_id}")
+                    return media_id
+                    
+                except Exception as upload_error:
+                    error_msg = str(upload_error).lower()
+                    
+                    # Check for specific OAuth 1.0a permission errors
+                    if "oauth1 app permissions" in error_msg or "403" in error_msg:
+                        logger.error(f"OAuth 1.0a permission error: {upload_error}")
+                        logger.error("This error indicates your Twitter app needs OAuth 1.0a permissions.")
+                        logger.error("Please check your Twitter Developer Portal app settings:")
+                        logger.error("1. Go to your app's 'Keys and tokens' section")
+                        logger.error("2. Ensure your app has 'Read and Write' permissions")
+                        logger.error("3. Regenerate your Access Token and Secret after changing permissions")
+                        return None
+                    
+                    # For other errors, retry
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** attempt  # Exponential backoff
+                        logger.warning(f"Upload attempt {attempt + 1} failed, retrying in {wait_time}s: {upload_error}")
+                        time.sleep(wait_time)
+                    else:
+                        raise upload_error
             
         except Exception as e:
             logger.error(f"Error uploading media: {e}")
@@ -65,10 +99,22 @@ class TwitterAPI:
             return tweet_id
             
         except Exception as e:
-            logger.error(f"Error posting tweet: {e}")
+            error_msg = str(e).lower()
+            
+            # Check for specific permission errors
+            if "oauth1 app permissions" in error_msg or "403" in error_msg:
+                logger.error(f"OAuth permission error: {e}")
+                logger.error("This error indicates your Twitter app permissions need to be updated.")
+                logger.error("Please check your Twitter Developer Portal app settings:")
+                logger.error("1. Go to your app's 'App permissions' section")
+                logger.error("2. Set permissions to 'Read and Write'")
+                logger.error("3. Regenerate your Access Token and Secret after changing permissions")
+            else:
+                logger.error(f"Error posting tweet: {e}")
+            
             return None
     
-    def create_thread(self, posts: List[dict]) -> bool:
+    def create_thread(self, posts: List[dict]) -> List[str]:
         """
         Create a thread of tweets.
         Each post dict should contain: 'text', 'media_path' (optional)
@@ -77,12 +123,13 @@ class TwitterAPI:
             posts: List of post dictionaries
         
         Returns:
-            True if all posts successful, False otherwise
+            List of tweet IDs if successful, empty list if failed
         """
         try:
             logger.info(f"Creating thread with {len(posts)} posts")
             
             reply_to_id = None
+            tweet_ids = []
             
             for i, post in enumerate(posts):
                 text = post.get('text', '')
@@ -102,14 +149,15 @@ class TwitterAPI:
                 
                 if not tweet_id:
                     logger.warning(f"Failed to post tweet {i+1}/{len(posts)}")
-                    return False
+                    return []
                 
+                tweet_ids.append(tweet_id)
                 reply_to_id = tweet_id
                 logger.info(f"Posted tweet {i+1}/{len(posts)} in thread")
             
             logger.info("Thread created successfully")
-            return True
+            return tweet_ids
             
         except Exception as e:
             logger.error(f"Error creating thread: {e}")
-            return False
+            return []
