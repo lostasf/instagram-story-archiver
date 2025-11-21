@@ -23,6 +23,39 @@ class StoryArchiver:
         self.media_manager = MediaManager(config.MEDIA_CACHE_DIR)
         self.archive_manager = ArchiveManager(config.ARCHIVE_DB_PATH)
     
+    def _format_story_datetime(self, taken_at: int) -> str:
+        """
+        Format Unix timestamp to human-readable datetime.
+        Example: "Thursday, 02 November 2025 14:48"
+        """
+        dt = datetime.fromtimestamp(taken_at)
+        return dt.strftime("%A, %d %B %Y %H:%M")
+    
+    def _ensure_anchor_tweet(self) -> Optional[str]:
+        """
+        Ensure the anchor tweet exists. Create it if it doesn't.
+        Returns the anchor tweet ID.
+        """
+        anchor_id = self.archive_manager.get_anchor_tweet_id()
+        
+        if anchor_id:
+            logger.info(f"Using existing anchor tweet: {anchor_id}")
+            return anchor_id
+        
+        # Create anchor tweet
+        logger.info("Creating anchor tweet...")
+        anchor_text = "Gendis JKT48 Instagram Story"
+        anchor_id = self.twitter_api.post_tweet(anchor_text)
+        
+        if anchor_id:
+            self.archive_manager.set_anchor_tweet_id(anchor_id)
+            self.archive_manager.set_last_tweet_id(anchor_id)
+            logger.info(f"Anchor tweet created: {anchor_id}")
+            return anchor_id
+        else:
+            logger.error("Failed to create anchor tweet")
+            return None
+    
     def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
         """
         Process a single story: download media and post to Twitter thread.
@@ -43,11 +76,20 @@ class StoryArchiver:
                 logger.info(f"Story {story_id} already archived, skipping")
                 return False
             
+            # Ensure anchor tweet exists
+            anchor_id = self._ensure_anchor_tweet()
+            if not anchor_id:
+                logger.error("Cannot proceed without anchor tweet")
+                return False
+            
             # Fetch story from Instagram when payload is not provided
             story_data = story_payload if story_payload is not None else self.instagram_api.get_story_by_id(username, story_id)
             if not story_data:
                 logger.error(f"Failed to fetch story {story_id}")
                 return False
+            
+            # Extract taken_at timestamp
+            taken_at = story_data.get('taken_at', 0)
             
             # Extract media URLs
             media_list = self.instagram_api.extract_media_urls(story_data)
@@ -57,49 +99,64 @@ class StoryArchiver:
             
             logger.info(f"Story {story_id} has {len(media_list)} media items")
             
-            # Download and prepare media
-            downloaded_media = []
-            for i, media in enumerate(media_list):
-                media_path = self.media_manager.download_media(
-                    media['url'],
-                    f"{story_id}_{i}",
-                    media['type']
-                )
-                
-                if media_path:
-                    # Compress images
-                    if media['type'] == 'image':
-                        media_path = self.media_manager.compress_image(media_path)
-                    
-                    downloaded_media.append({
-                        'path': media_path,
-                        'type': media['type']
-                    })
+            # Download and prepare media (only first media item per story)
+            media = media_list[0]
+            media_path = self.media_manager.download_media(
+                media['url'],
+                f"{story_id}_0",
+                media['type']
+            )
             
-            if not downloaded_media:
-                logger.error(f"Failed to download any media for story {story_id}")
+            if not media_path:
+                logger.error(f"Failed to download media for story {story_id}")
                 return False
             
-            # Create Twitter thread
-            tweets = self._create_tweets(username, story_id, downloaded_media)
-            tweet_ids = self.twitter_api.create_thread(tweets)
+            # Compress images
+            if media['type'] == 'image':
+                media_path = self.media_manager.compress_image(media_path)
             
-            if not tweet_ids:
-                logger.error(f"Failed to post thread for story {story_id}")
+            # Format datetime for tweet
+            datetime_text = self._format_story_datetime(taken_at)
+            
+            # Get the last tweet ID to reply to
+            last_tweet_id = self.archive_manager.get_last_tweet_id()
+            if not last_tweet_id:
+                last_tweet_id = anchor_id
+            
+            # Upload media
+            media_id = self.twitter_api.upload_media(media_path)
+            if not media_id:
+                logger.error(f"Failed to upload media for story {story_id}")
+                self.media_manager.cleanup_media(media_path)
                 return False
+            
+            # Post tweet as reply to last tweet
+            tweet_id = self.twitter_api.post_tweet(
+                text=datetime_text,
+                media_ids=[media_id],
+                reply_to_id=last_tweet_id
+            )
+            
+            if not tweet_id:
+                logger.error(f"Failed to post tweet for story {story_id}")
+                self.media_manager.cleanup_media(media_path)
+                return False
+            
+            # Update last tweet ID
+            self.archive_manager.set_last_tweet_id(tweet_id)
             
             # Record in archive
             archive_data = {
-                'media_count': len(downloaded_media),
+                'media_count': len(media_list),
                 'media_urls': [m['url'] for m in media_list],
-                'tweet_ids': tweet_ids
+                'tweet_ids': [tweet_id],
+                'taken_at': taken_at
             }
             
             self.archive_manager.add_story(story_id, archive_data)
             
             # Cleanup downloaded media
-            for media in downloaded_media:
-                self.media_manager.cleanup_media(media['path'])
+            self.media_manager.cleanup_media(media_path)
             
             logger.info(f"Successfully archived story {story_id}")
             return True
@@ -107,47 +164,6 @@ class StoryArchiver:
         except Exception as e:
             logger.error(f"Error processing story: {e}", exc_info=True)
             return False
-    
-    def _create_tweets(self, username: str, story_id: str, media_list: List[dict]) -> List[dict]:
-        """
-        Create tweet posts for a thread.
-        
-        Args:
-            username: Instagram username
-            story_id: Story ID
-            media_list: List of media dictionaries with 'path' and 'type'
-        
-        Returns:
-            List of post dictionaries for create_thread
-        """
-        posts = []
-        
-        # First tweet: intro
-        posts.append({
-            'text': f'🔄 Archiving story from @{username}\n\nStory ID: {story_id}\nTotal items: {len(media_list)}\n\n#StoryArchive #Gendis',
-            'media_path': None
-        })
-        
-        # Media tweets
-        for i, media in enumerate(media_list):
-            post_text = f'📸 Item {i+1}/{len(media_list)}\n'
-            if media['type'] == 'video':
-                post_text += '🎥 Video'
-            else:
-                post_text += '🖼️ Image'
-            
-            posts.append({
-                'text': post_text,
-                'media_path': media['path']
-            })
-        
-        # Final tweet: completion
-        posts.append({
-            'text': f'✅ Archiving complete!\n\nTotal items archived: {len(media_list)}\nTimestamp: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n#StoryArchive',
-            'media_path': None
-        })
-        
-        return posts
     
     def archive_all_stories(self) -> int:
         """
