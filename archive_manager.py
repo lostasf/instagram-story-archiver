@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,12 @@ class ArchiveManager:
         except Exception as e:
             logger.error(f"Error loading archive: {e}")
         
-        return {'archived_stories': [], 'last_check': None}
+        return {
+            'archived_stories': [], 
+            'last_check': None,
+            'anchor_tweet_id': None,
+            'last_tweet_id': None
+        }
     
     def _save_archive(self) -> bool:
         """Save archive database to file."""
@@ -81,6 +86,34 @@ class ArchiveManager:
             logger.error(f"Error updating story tweets: {e}")
             return False
     
+    def get_anchor_tweet_id(self) -> Optional[str]:
+        """Get the anchor tweet ID."""
+        return self.data.get('anchor_tweet_id')
+    
+    def set_anchor_tweet_id(self, tweet_id: str) -> bool:
+        """Set the anchor tweet ID."""
+        try:
+            self.data['anchor_tweet_id'] = tweet_id
+            logger.info(f"Set anchor tweet ID: {tweet_id}")
+            return self._save_archive()
+        except Exception as e:
+            logger.error(f"Error setting anchor tweet ID: {e}")
+            return False
+    
+    def get_last_tweet_id(self) -> Optional[str]:
+        """Get the last tweet ID in the thread."""
+        return self.data.get('last_tweet_id')
+    
+    def set_last_tweet_id(self, tweet_id: str) -> bool:
+        """Set the last tweet ID in the thread."""
+        try:
+            self.data['last_tweet_id'] = tweet_id
+            logger.info(f"Set last tweet ID: {tweet_id}")
+            return self._save_archive()
+        except Exception as e:
+            logger.error(f"Error setting last tweet ID: {e}")
+            return False
+    
     def get_statistics(self) -> Dict:
         """Get archive statistics."""
         stories = self.data.get('archived_stories', [])
@@ -91,5 +124,7 @@ class ArchiveManager:
             'total_stories': total_stories,
             'total_media': total_media,
             'last_check': self.data.get('last_check'),
-            'stories': stories
+            'stories': stories,
+            'anchor_tweet_id': self.data.get('anchor_tweet_id'),
+            'last_tweet_id': self.data.get('last_tweet_id')
         }
