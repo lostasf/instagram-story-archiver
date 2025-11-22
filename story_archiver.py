@@ -69,10 +69,12 @@ class StoryArchiver:
             True if successful, False otherwise
         """
         try:
-            logger.info(f"Processing story {story_id} from {username}")
+            logger.info(f"=== Starting process_story for {story_id} from {username} ===")
             
             # Check if already archived
-            if story_id in self.archive_manager.get_archived_story_ids():
+            archived_ids = self.archive_manager.get_archived_story_ids()
+            logger.info(f"Current archived IDs: {list(archived_ids)}")
+            if story_id in archived_ids:
                 logger.info(f"Story {story_id} already archived, skipping")
                 return False
             
@@ -159,10 +161,12 @@ class StoryArchiver:
             self.media_manager.cleanup_media(media_path)
             
             logger.info(f"Successfully archived story {story_id}")
+            logger.info(f"=== Completed process_story for {story_id} ===")
             return True
             
         except Exception as e:
-            logger.error(f"Error processing story: {e}", exc_info=True)
+            logger.error(f"Error processing story {story_id}: {e}", exc_info=True)
+            logger.info(f"=== Failed process_story for {story_id} ===")
             return False
     
     def archive_all_stories(self) -> int:
@@ -181,7 +185,14 @@ class StoryArchiver:
                 logger.error("Failed to fetch stories from Instagram API")
                 return 0
             
+            if not isinstance(stories, list):
+                logger.error(f"Expected list from Instagram API, got {type(stories)}: {stories}")
+                return 0
+            
             story_items = [story for story in stories if isinstance(story, dict)]
+            
+            if len(story_items) != len(stories):
+                logger.warning(f"Some stories are not dictionaries: {len(story_items)}/{len(stories)} are valid")
             
             def _story_timestamp(item: Dict) -> int:
                 value = item.get('taken_at') or 0
@@ -193,26 +204,48 @@ class StoryArchiver:
             story_items.sort(key=_story_timestamp)
             logger.info(f"Found {len(story_items)} stories to evaluate")
             
+            # Validate story structure
+            for i, story in enumerate(story_items):
+                story_id = story.get('pk') or story.get('id')
+                if not story_id:
+                    logger.warning(f"Story {i} missing both 'pk' and 'id' keys: {list(story.keys())}")
+                if 'image_versions2' not in story and 'video_versions' not in story:
+                    logger.warning(f"Story {story_id} has no media: {list(story.keys())}")
+            
+            # Debug: Log all story IDs found
+            story_ids = [str(s.get('pk') or s.get('id')) for s in story_items if s.get('pk') or s.get('id')]
+            logger.info(f"Story IDs found: {story_ids}")
+            
             archived_ids = {str(sid) for sid in self.archive_manager.get_archived_story_ids() if sid is not None}
+            logger.info(f"Already archived story IDs: {list(archived_ids)}")
             processed_count = 0
             
             if not story_items:
                 logger.info("No active stories available at this time")
             
-            for story in story_items:
+            for i, story in enumerate(story_items):
                 story_id = story.get('pk') or story.get('id')
                 if not story_id:
-                    logger.debug("Skipping story without an ID")
+                    logger.debug(f"Skipping story {i} without an ID")
                     continue
                 
                 story_id = str(story_id)
+                logger.info(f"Processing story {i+1}/{len(story_items)}: {story_id}")
+                
                 if story_id in archived_ids:
                     logger.info(f"Story {story_id} already archived, skipping")
                     continue
                 
-                if self.process_story(username, story_id, story_payload=story):
+                logger.info(f"Attempting to process story {story_id}")
+                success = self.process_story(username, story_id, story_payload=story)
+                logger.info(f"Story {story_id} processing result: {success}")
+                
+                if success:
                     processed_count += 1
                     archived_ids.add(story_id)
+                    logger.info(f"Successfully processed story {story_id}. Total processed: {processed_count}")
+                else:
+                    logger.warning(f"Failed to process story {story_id}")
             
             logger.info(f"Story check completed for {username}")
             logger.info(f"New stories archived: {processed_count}")

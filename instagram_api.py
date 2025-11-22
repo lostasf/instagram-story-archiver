@@ -32,19 +32,27 @@ class InstagramAPI:
             return items
         
         if isinstance(payload, dict):
+            # Check for common response structures
             if 'result' in payload:
-                return self._parse_story_items(payload.get('result'))
+                result = payload.get('result')
+                logger.debug(f"Found 'result' key with {len(result) if isinstance(result, list) else type(result)} items")
+                return self._parse_story_items(result)
             
+            # Check for pagination or nested structures
             aggregated: List[Dict] = []
-            for key in ('items', 'stories', 'reels_media', 'tray', 'media', 'data'):
+            for key in ('items', 'stories', 'reels_media', 'tray', 'media', 'data', 'story_items'):
                 if key in payload:
-                    aggregated.extend(self._parse_story_items(payload.get(key)))
+                    value = payload.get(key)
+                    logger.debug(f"Found '{key}' key with {len(value) if isinstance(value, list) else type(value)} items")
+                    aggregated.extend(self._parse_story_items(value))
             if aggregated:
                 return aggregated
             
+            # Check if this payload itself is a story
             if any(key in payload for key in ('pk', 'id', 'image_versions2', 'video_versions')):
                 return [payload]
         
+        logger.warning(f"Unable to parse story items from payload: {type(payload)}")
         return []
     
     def get_user_stories(self, username: str) -> Optional[List[Dict]]:
@@ -66,10 +74,17 @@ class InstagramAPI:
             response.raise_for_status()
             
             story_data = response.json()
-            logger.debug(f"Stories response: {json.dumps(story_data, indent=2)[:500]}")
+            logger.info(f"Stories response keys: {list(story_data.keys()) if isinstance(story_data, dict) else type(story_data)}")
+            logger.debug(f"Stories response: {json.dumps(story_data, indent=2)[:1000]}")
             
             stories = self._parse_story_items(story_data)
             logger.info(f"Found {len(stories)} active stories for {username}")
+            
+            # Debug: Log details about each story found
+            for i, story in enumerate(stories):
+                story_id = story.get('pk') or story.get('id')
+                taken_at = story.get('taken_at', 'unknown')
+                logger.info(f"Story {i+1}: ID={story_id}, taken_at={taken_at}")
             
             return stories
             
