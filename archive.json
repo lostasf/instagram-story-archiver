@@ -1,1 +1,18 @@
-
+{
+  "archived_stories": [
+    {
+      "story_id": "3770875382330519754",
+      "archived_at": "2025-11-22T09:51:55.702505",
+      "media_count": 1,
+      "tweet_ids": [
+        "1992169161053683938"
+      ],
+      "media_urls": [
+        "https://scontent.cdninstagram.com/v/t51.82787-15/584313209_17988696218866679_4141174456239807593_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=110&ig_cache_key=Mzc3MDg3NTM4MjMzMDUxOTc1NA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=clqhTuYMvxUQ7kNvwHRBO4i&_nc_oc=AdkdbNzI-Fr-3DTOkLYZsa1wVF2rif4okLVmrmFWNwrRX2HXTKrcqaQefemJ7nHdEP4&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=scontent.cdninstagram.com&_nc_gid=UcuWa8J71-JgJoRs8VLVVA&oh=00_Afi9vYzJddkB_Tq9Xw4qGZVkg3gMJ9Ir86sECZMCYDehIw&oe=692711F2"
+      ]
+    }
+  ],
+  "last_check": "2025-11-22T09:51:55.702515",
+  "anchor_tweet_id": "1992169155735204334",
+  "last_tweet_id": "1992169161053683938"
+}
