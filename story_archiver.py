@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from config import Config
 from instagram_api import InstagramAPI
@@ -25,10 +25,11 @@ class StoryArchiver:
     
     def _format_story_datetime(self, taken_at: int) -> str:
         """
-        Format Unix timestamp to human-readable datetime.
+        Format Unix timestamp to human-readable datetime in GMT+7 timezone.
         Example: "Thursday, 02 November 2025 14:48"
         """
-        dt = datetime.fromtimestamp(taken_at)
+        utc_plus_7 = timezone(timedelta(hours=7))
+        dt = datetime.fromtimestamp(taken_at, tz=utc_plus_7)
         return dt.strftime("%A, %d %B %Y %H:%M")
     
     def _ensure_anchor_tweet(self) -> Optional[str]:
