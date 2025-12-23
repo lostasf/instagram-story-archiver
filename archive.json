@@ -296,9 +296,31 @@
       "media_urls": [
         "https://scontent-ist1-1.cdninstagram.com/v/t51.82787-15/603027533_17991745193866679_2711332542728702573_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=102&ig_cache_key=Mzc5MzM1NjIyNzkyNjUwNjA1OA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=S8HJHBXP8g8Q7kNvwH9G-xt&_nc_oc=Adm74le64cOfJJwWlglt0dOULing3uzyO1wxl0_Lo9ebzZx4cE-Lj18EzW6gEvv1sMo&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=scontent-ist1-1.cdninstagram.com&_nc_gid=BqJzx_SobZYOL1ZNSN250A&oh=00_Afl6h5IIazELLljn6YesBMMQsw2wDYUHxRj59xvrXJR6Tg&oe=694F615B"
       ]
+    },
+    {
+      "story_id": "3794022436795160719",
+      "archived_at": "2025-12-23T20:26:17.852493",
+      "media_count": 1,
+      "tweet_ids": [
+        "2003562829434220625"
+      ],
+      "media_urls": [
+        "https://instagram.fcgh69-1.fna.fbcdn.net/v/t51.82787-15/587782034_17991831875866679_1745040106820250901_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=102&ig_cache_key=Mzc5NDAyMjQzNjc5NTE2MDcxOQ%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=NSkJjB7PVg0Q7kNvwEEFO10&_nc_oc=AdmGJzSMGz99--rXgXBXnAQtHfO5vzSAsTRXIxsDceVNXm5TZuPbxgK51l-pzkBm99A&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fcgh69-1.fna&_nc_gid=joZfMLtUFpbA59Q7aTomuQ&oh=00_AfmX9zLhlF1_KbsPdSPKwfplTinqcFbGaPo-GIvm0sKD7g&oe=6950B11C"
+      ]
+    },
+    {
+      "story_id": "3794023070118290683",
+      "archived_at": "2025-12-23T20:26:20.114524",
+      "media_count": 1,
+      "tweet_ids": [
+        "2003562838695248337"
+      ],
+      "media_urls": [
+        "https://instagram.fcgh69-1.fna.fbcdn.net/v/t51.82787-15/604645266_17991831965866679_5535128498083114282_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=100&ig_cache_key=Mzc5NDAyMzA3MDExODI5MDY4Mw%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=y0LsfJwfPz8Q7kNvwG4-hfd&_nc_oc=Adlph_4CpouFJKZoCY2FKQH740sXEg6mkwtQhCCOQZpqMTS_lUixJ0nS3oymJqpLZTQ&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fcgh69-1.fna&_nc_gid=joZfMLtUFpbA59Q7aTomuQ&oh=00_AfkZAnBcRDEoJJ1CKYb2cP3AbDlp_Yqnsk0TVsQPqDDBWA&oe=6950B1EC"
+      ]
     }
   ],
-  "last_check": "2025-12-22T20:26:44.097108",
+  "last_check": "2025-12-23T20:26:20.114533",
   "anchor_tweet_id": "1992327407253238203",
-  "last_tweet_id": "2003200551631429810"
+  "last_tweet_id": "2003562838695248337"
 }
