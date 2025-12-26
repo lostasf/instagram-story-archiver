@@ -33,7 +33,11 @@ Go to **Settings → Secrets and variables → Actions** and add the following s
 
 Go to **Settings → Secrets and variables → Variables** and add:
 
-- `INSTAGRAM_USERNAME` - `jkt48.gendis` (or target account)
+- `INSTAGRAM_USERNAME` - `jkt48.gendis` (single account) or `jkt48.gendis,jkt48.lana.a` (comma-separated list for multi-account)
+
+**Tip**: Monitoring multiple accounts increases RapidAPI usage. Consider reducing the workflow schedule (e.g. every 2 hours) if you have a 1000/month quota.
+
+**Optional advanced config**: If you want to use `INSTAGRAM_USERNAMES` / `TWITTER_THREAD_CONFIG` in GitHub Actions, add them to the workflow `env:` block in `.github/workflows/archive-stories.yml`.
 
 **Note**: Variables are less sensitive than secrets and can be used for non-secret configuration.
 
