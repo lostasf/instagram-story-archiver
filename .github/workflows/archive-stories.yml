@@ -2,7 +2,7 @@ name: Archive Instagram Stories
 
 on:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 jobs:
@@ -39,6 +39,9 @@ jobs:
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
           INSTAGRAM_USERNAME: ${{ vars.INSTAGRAM_USERNAME }}
+          INSTAGRAM_USERNAMES: ${{ vars.INSTAGRAM_USERNAMES }}
+          INSTAGRAM_TEMPLATE_NAMES: ${{ vars.INSTAGRAM_TEMPLATE_NAMES }}
+          TWITTER_THREAD_CONFIG: ${{ vars.TWITTER_THREAD_CONFIG }}
           ARCHIVE_DB_PATH: ./archive.json
           MEDIA_CACHE_DIR: ./media_cache
         run: python main.py
