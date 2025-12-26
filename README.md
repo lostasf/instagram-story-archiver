@@ -1,6 +1,6 @@
 # Gendis Instagram Story Archiver
 
-Archive Instagram stories from `jkt48.gendis` and automatically post them to Twitter/X in organized threads.
+Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) and automatically post them to Twitter/X in organized threads.
 
 ## ✨ Features
 
@@ -31,7 +31,9 @@ Go to **Settings → Secrets and variables → Actions** and add:
 - `TWITTER_BEARER_TOKEN` - Twitter Bearer Token
 
 **Variables:**
-- `INSTAGRAM_USERNAME` - `jkt48.gendis` (or target account)
+- `INSTAGRAM_USERNAME` - `jkt48.gendis` (single username; also accepts comma-separated list for backward compatibility)
+- `INSTAGRAM_USERNAMES` - `jkt48.gendis,jkt48.lana.a` (comma-separated list for multi-account)
+- `TWITTER_THREAD_CONFIG` - optional JSON to customize per-account anchor tweet text
 
 ### 3. Done! 🎉
 
@@ -57,8 +59,11 @@ cp .env.example .env
 # Run once (as GitHub Actions does)
 python main.py
 
-# Archive specific story
+# Archive specific story (defaults to primary configured account)
 python main.py --story-id <story_id>
+
+# Archive specific story for a specific Instagram user
+python main.py --username <instagram_username> --story-id <story_id>
 
 # View archive statistics
 python main.py --status
@@ -71,18 +76,17 @@ python test_setup.py
 
 ### Story Fetching Flow
 
-1. **Check Instagram**: API queries `jkt48.gendis` for new stories
-2. **Download Media**: All images/videos from stories are downloaded
+1. **Check Instagram**: API queries all configured Instagram accounts for new stories
+2. **Download Media**: Images/videos from stories are downloaded
 3. **Optimize**: Images are compressed to meet Twitter's 5MB limit
-4. **Create Thread**: Stories are posted as Twitter threads
+4. **Create Thread**: Each Instagram account gets its own Twitter thread (separate anchor tweet)
 5. **Archive**: Story IDs and tweet references are stored in `archive.json`
 
 ### Thread Structure
 
-Each archived story becomes a Twitter thread:
-- **Post 1**: Introduction with story info and item count
-- **Posts 2-N**: Individual media items (images/videos)
-- **Final Post**: Completion confirmation
+Each Instagram account gets its own thread:
+- **Anchor tweet**: One tweet per Instagram account (customizable)
+- **Story tweets**: Each story is posted as a reply in that account's thread, with the story timestamp and media
 
 ### Rate Limiting
 
@@ -114,20 +118,35 @@ Each archived story becomes a Twitter thread:
 
 ## Archive Database Format
 
-`archive.json` stores all archived stories:
+`archive.json` stores all archived stories, grouped by Instagram account:
 
 ```json
 {
-  "archived_stories": [
-    {
-      "story_id": "2921414441985452983",
-      "archived_at": "2024-01-15T10:30:00.123456",
-      "media_count": 3,
-      "tweet_ids": ["1234567890", "1234567891", "1234567892"],
-      "media_urls": ["https://...", "https://..."]
+  "schema_version": 2,
+  "accounts": {
+    "jkt48.gendis": {
+      "anchor_tweet_id": "1234567890",
+      "last_tweet_id": "1234567899",
+      "last_check": "2024-01-15T10:30:00.123456",
+      "archived_stories": [
+        {
+          "story_id": "2921414441985452983",
+          "instagram_username": "jkt48.gendis",
+          "archived_at": "2024-01-15T10:30:00.123456",
+          "taken_at": 1700000000,
+          "media_count": 1,
+          "tweet_ids": ["1234567899"],
+          "media_urls": ["https://..."]
+        }
+      ]
+    },
+    "jkt48.lana.a": {
+      "anchor_tweet_id": "2234567890",
+      "last_tweet_id": "2234567899",
+      "last_check": "2024-01-15T10:30:00.123456",
+      "archived_stories": []
     }
-  ],
-  "last_check": "2024-01-15T10:30:00.123456"
+  }
 }
 ```
 
