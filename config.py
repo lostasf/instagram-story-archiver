@@ -38,6 +38,14 @@ class Config:
         # Backward compatibility: keep INSTAGRAM_USERNAME pointing to the primary account
         self.INSTAGRAM_USERNAME = self.INSTAGRAM_USERNAMES[0]
 
+        instagram_template_names_raw = os.getenv('INSTAGRAM_TEMPLATE_NAMES')
+        self.INSTAGRAM_TEMPLATE_NAMES = _parse_csv(instagram_template_names_raw)
+
+        self.USERNAME_TO_TEMPLATE_NAME = {}
+        for i, username in enumerate(self.INSTAGRAM_USERNAMES):
+            if i < len(self.INSTAGRAM_TEMPLATE_NAMES):
+                self.USERNAME_TO_TEMPLATE_NAME[username] = self.INSTAGRAM_TEMPLATE_NAMES[i]
+
         self.ARCHIVE_DB_PATH = os.getenv('ARCHIVE_DB_PATH', './archive.json')
         self.MEDIA_CACHE_DIR = os.getenv('MEDIA_CACHE_DIR', './media_cache')
 
@@ -76,6 +84,16 @@ class Config:
         anchor_text = configured.get('anchor_text')
         if isinstance(anchor_text, str) and anchor_text.strip():
             return anchor_text.strip()
+
+        # Check for template name
+        template_name = configured.get('template_name')
+        if not template_name:
+            template_name = self.USERNAME_TO_TEMPLATE_NAME.get(username)
+
+        if template_name:
+            if 'jkt48' in username.lower():
+                return f"{template_name} JKT48 Instagram Story"
+            return f"{template_name} Instagram Story"
 
         # Sensible defaults
         if username == 'jkt48.gendis':

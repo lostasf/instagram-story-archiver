@@ -25,6 +25,10 @@ def test_config() -> Config:
     logger.info("✓ Configuration loaded successfully")
     logger.info(f"  - Instagram Usernames: {', '.join(config.INSTAGRAM_USERNAMES)}")
     logger.info(f"  - Primary Instagram Username: {config.INSTAGRAM_USERNAME}")
+
+    template_names = [f"{u}: {config.USERNAME_TO_TEMPLATE_NAME.get(u, 'None')}" for u in config.INSTAGRAM_USERNAMES]
+    logger.info(f"  - Template Names: {', '.join(template_names)}")
+
     logger.info(f"  - Archive DB: {config.ARCHIVE_DB_PATH}")
     logger.info(f"  - Media Cache: {config.MEDIA_CACHE_DIR}")
     return config
