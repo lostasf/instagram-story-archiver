@@ -84,32 +84,47 @@ class StoryArchiver:
                 logger.warning(f"No media found in story {story_id}")
                 return False
 
-            # Download and prepare media
-            media = media_list[0]
-            media_path = self.media_manager.download_media(
-                media['url'],
-                f"{username}_{story_id}_0",
-                media['type'],
-            )
-            if not media_path:
-                logger.error(f"Failed to download media for story {story_id}")
+            # Download and prepare ALL media items
+            local_media_paths = []
+            media_types = []
+            
+            for idx, media in enumerate(media_list):
+                media_path = self.media_manager.download_media(
+                    media['url'],
+                    f"{username}_{story_id}_{idx}",
+                    media['type'],
+                )
+                if not media_path:
+                    logger.warning(f"Failed to download media {idx} for story {story_id}, continuing with others")
+                    continue
+
+                if media['type'] == 'image':
+                    media_path = self.media_manager.compress_image(media_path)
+                
+                local_media_paths.append(media_path)
+                media_types.append(media['type'])
+            
+            if not local_media_paths:
+                logger.error(f"Failed to download any media for story {story_id}")
                 return False
+            
+            logger.info(f"Downloaded {len(local_media_paths)} media items for story {story_id}")
 
-            if media['type'] == 'image':
-                media_path = self.media_manager.compress_image(media_path)
-
-            # Save to archive
+            # Save to archive with all media paths
             archive_data = {
                 'media_count': len(media_list),
                 'media_urls': [m['url'] for m in media_list],
                 'tweet_ids': [],  # Not posted yet
                 'taken_at': taken_at,
-                'local_media_path': media_path,
-                'media_type': media['type'],
+                'local_media_paths': local_media_paths,
+                'media_types': media_types,
+                # Keep legacy fields for backward compatibility
+                'local_media_path': local_media_paths[0] if local_media_paths else None,
+                'media_type': media_types[0] if media_types else 'image',
             }
             self.archive_manager.add_story(username, story_id, archive_data)
             
-            logger.info(f"Successfully archived story {story_id} for {username} (local: {media_path})")
+            logger.info(f"Successfully archived story {story_id} for {username} with {len(local_media_paths)} media items")
             return True
         except Exception as e:
             logger.error(f"Error archiving story {story_id}: {e}", exc_info=True)
@@ -135,26 +150,61 @@ class StoryArchiver:
                 logger.info(f"Story {story_id} already posted for {username}")
                 return True
 
-            media_path = story_entry.get('local_media_path')
-            if not media_path or not os.path.exists(media_path):
+            # Get all media paths (new format) or fallback to single path (legacy)
+            media_paths = story_entry.get('local_media_paths', [])
+            media_types = story_entry.get('media_types', [])
+            
+            # Fallback to legacy single media format
+            if not media_paths:
+                legacy_path = story_entry.get('local_media_path')
+                legacy_type = story_entry.get('media_type', 'image')
+                if legacy_path:
+                    media_paths = [legacy_path]
+                    media_types = [legacy_type]
+            
+            # Check if media exists or needs re-download
+            valid_paths = [p for p in media_paths if p and os.path.exists(p)]
+            
+            if not valid_paths:
                 logger.info(f"Local media missing for {story_id}, attempting re-download...")
                 media_urls = story_entry.get('media_urls', [])
-                media_type = story_entry.get('media_type', 'image')
                 if not media_urls:
                     logger.error(f"No media URLs available to re-download story {story_id}")
                     return False
                 
-                media_path = self.media_manager.download_media(
-                    media_urls[0],
-                    f"{username}_{story_id}_0",
-                    media_type,
-                )
-                if not media_path:
-                    logger.error(f"Failed to re-download media for story {story_id}")
-                    return False
+                # Get stored media types if available, otherwise detect from URL
+                stored_media_types = story_entry.get('media_types', [])
                 
-                if media_type == 'image':
-                    media_path = self.media_manager.compress_image(media_path)
+                # Re-download all media
+                media_paths = []
+                media_types = []
+                for idx, url in enumerate(media_urls):
+                    # Use stored media type if available, otherwise detect from URL
+                    if idx < len(stored_media_types) and stored_media_types[idx]:
+                        media_type = stored_media_types[idx]
+                    else:
+                        media_type = 'video' if 'video' in url.lower() else 'image'
+                    
+                    media_path = self.media_manager.download_media(
+                        url,
+                        f"{username}_{story_id}_{idx}",
+                        media_type,
+                    )
+                    if not media_path:
+                        logger.warning(f"Failed to re-download media {idx} for story {story_id}")
+                        continue
+                    
+                    if media_type == 'image':
+                        media_path = self.media_manager.compress_image(media_path)
+                    
+                    media_paths.append(media_path)
+                    media_types.append(media_type)
+                
+                if not media_paths:
+                    logger.error(f"Failed to re-download any media for story {story_id}")
+                    return False
+            else:
+                media_paths = valid_paths
 
             # Ensure anchor tweet
             anchor_id = self._ensure_anchor_tweet(username)
@@ -167,32 +217,91 @@ class StoryArchiver:
             caption = self.config.get_story_caption(username, taken_at)
             
             last_tweet_id = self.archive_manager.get_last_tweet_id(username) or anchor_id
-
-            # Upload and post
-            media_id = self.twitter_api.upload_media(media_path)
-            if not media_id:
-                logger.error(f"Failed to upload media for story {story_id}")
-                return False
-
-            tweet_id = self.twitter_api.post_tweet(
-                text=caption,
-                media_ids=[media_id],
-                reply_to_id=last_tweet_id,
-            )
-
-            if not tweet_id:
-                logger.error(f"Failed to post tweet for story {story_id}")
+            
+            # Post all media as a thread
+            # Twitter allows up to 4 images per tweet or 1 video per tweet
+            tweet_ids = []
+            
+            # Check if we have videos (videos must be posted one per tweet)
+            has_video = any(t == 'video' for t in media_types if t)
+            
+            if has_video:
+                # Post each media item separately (videos can't be grouped)
+                for idx, media_path in enumerate(media_paths):
+                    media_id = self.twitter_api.upload_media(media_path)
+                    if not media_id:
+                        logger.error(f"Failed to upload media {idx} for story {story_id}")
+                        continue
+                    
+                    # Add caption only to first tweet
+                    tweet_text = caption if idx == 0 else f"{caption}\n({idx + 1}/{len(media_paths)})"
+                    
+                    tweet_id = self.twitter_api.post_tweet(
+                        text=tweet_text,
+                        media_ids=[media_id],
+                        reply_to_id=last_tweet_id,
+                    )
+                    
+                    if not tweet_id:
+                        logger.error(f"Failed to post tweet for media {idx} of story {story_id}")
+                        break
+                    
+                    tweet_ids.append(tweet_id)
+                    last_tweet_id = tweet_id
+                    logger.info(f"Posted tweet {idx + 1}/{len(media_paths)} for story {story_id}")
+            else:
+                # All images - batch up to 4 per tweet
+                batch_size = 4
+                for batch_idx in range(0, len(media_paths), batch_size):
+                    batch_paths = media_paths[batch_idx:batch_idx + batch_size]
+                    
+                    # Upload all media in batch
+                    media_ids = []
+                    for path in batch_paths:
+                        media_id = self.twitter_api.upload_media(path)
+                        if media_id:
+                            media_ids.append(media_id)
+                    
+                    if not media_ids:
+                        logger.error(f"Failed to upload media batch {batch_idx // batch_size + 1} for story {story_id}")
+                        break
+                    
+                    # Add batch info to caption if there are multiple batches
+                    if len(media_paths) > batch_size:
+                        batch_num = batch_idx // batch_size + 1
+                        total_batches = (len(media_paths) + batch_size - 1) // batch_size
+                        tweet_text = f"{caption}\n({batch_num}/{total_batches})"
+                    else:
+                        tweet_text = caption
+                    
+                    tweet_id = self.twitter_api.post_tweet(
+                        text=tweet_text,
+                        media_ids=media_ids,
+                        reply_to_id=last_tweet_id,
+                    )
+                    
+                    if not tweet_id:
+                        logger.error(f"Failed to post tweet for batch {batch_idx // batch_size + 1} of story {story_id}")
+                        break
+                    
+                    tweet_ids.append(tweet_id)
+                    last_tweet_id = tweet_id
+                    logger.info(f"Posted tweet with {len(media_ids)} images for story {story_id}")
+            
+            if not tweet_ids:
+                logger.error(f"Failed to post any tweets for story {story_id}")
                 return False
 
             # Update archive
-            self.archive_manager.update_story_tweets(username, story_id, [tweet_id])
-            self.archive_manager.set_last_tweet_id(username, tweet_id)
-            self.archive_manager.update_story_local_path(username, story_id, None)
+            self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
+            self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
+            self.archive_manager.update_story_local_paths(username, story_id, None)
 
-            # Cleanup
-            self.media_manager.cleanup_media(media_path)
+            # Cleanup all media files
+            for media_path in media_paths:
+                self.media_manager.cleanup_media(media_path)
 
-            logger.info(f"Successfully posted story {story_id} for {username}")
+            logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
             return True
         except Exception as e:
             logger.error(f"Error posting story {story_id}: {e}", exc_info=True)

@@ -12,6 +12,7 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 - 📝 **Customizable Captions**: Per-user caption templates (Gendis, Lana, etc.)
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
 - 🔄 **Auto-commit**: Archive updates tracked in git history
+- 🎬 **Multi-Media Support**: Handles Instagram stories with 4+ media items (batches images, threads videos)
 
 ## 🚀 Quick Start (GitHub Actions)
 
@@ -165,6 +166,37 @@ Logs are written to both console and `archiver.log`:
 2024-01-15 10:30:10 - twitter_api - INFO - Tweet posted successfully. ID: 1234567890
 ```
 
+## Multi-Media Story Handling
+
+The archiver correctly handles Instagram stories with multiple media items (4+ images or videos):
+
+### How It Works
+
+**Archive Stage:**
+- Downloads **ALL** media items from a story (not just the first)
+- Stores multiple local paths and media types
+- Maintains backward compatibility with older archive format
+
+**Post Stage:**
+- **Images**: Batches up to 4 images per tweet (Twitter limit)
+  - 1-4 images → 1 tweet
+  - 5-8 images → 2 tweets
+  - 9+ images → multiple tweets
+- **Videos**: Posts 1 video per tweet (Twitter limitation)
+- Creates threaded tweets with progress indicators: `(1/2)`, `(2/2)`
+
+### Example
+
+If an Instagram story has 5 images:
+1. Archive downloads all 5 images
+2. Posts to Twitter as 2 tweets in a thread:
+   - Tweet 1: 4 images + caption + `(1/2)`
+   - Tweet 2: 1 image + caption + `(2/2)`
+   
+Both tweets are replies in the same thread.
+
+See [MULTI_MEDIA_HANDLING.md](MULTI_MEDIA_HANDLING.md) for detailed documentation.
+
 ## Error Handling
 
 The archiver is resilient to errors:
@@ -242,6 +274,7 @@ python diagnose_twitter_oauth.py
 
 - [x] Support for multiple Instagram accounts
 - [x] Custom hashtag/caption templates
+- [x] Handle stories with 4+ media items (multi-media batching)
 - [ ] Story filtering (time-based, caption-based)
 - [ ] Web dashboard for status monitoring
 - [ ] Database backup and restoration
