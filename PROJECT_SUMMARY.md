@@ -10,8 +10,8 @@ A complete Python-based application that automatically archives Instagram storie
 
 1. **main.py** (3,439 bytes)
    - Entry point with command-line interface
-   - Scheduler that runs archiving job every hour
-   - Commands: `--once`, `--story-id`, `--status`
+   - Scheduler that runs archiving job every 8 hours
+   - Commands: `--story-id`, `--status`, `--post`, `--fetch-only`
 
 2. **config.py** (1,206 bytes)
    - Environment configuration management
@@ -113,19 +113,19 @@ A complete Python-based application that automatically archives Instagram storie
 ### Data Flow
 
 ```
-Instagram Stories (RapidAPI)
+Instagram Stories (RapidAPI - Every 8h)
         ↓
     Fetch & Validate
         ↓
-    Download Media
+    Download & Cache Media
         ↓
     Compress Images
         ↓
-    Create Tweets
-        ↓
-    Post to Twitter Thread
-        ↓
     Archive in JSON DB
+        ↓
+    Check "Next Day" Logic
+        ↓
+    Post to Twitter Thread (at 00:00 AM)
         ↓
     Cleanup Cache
 ```
@@ -163,7 +163,9 @@ Configuration:
 
 ### ✅ Complete Features
 
-- [x] Automatic hourly story checking
+- [x] Automatic 8-hour story checking
+- [x] Next-day Twitter posting logic
+- [x] Custom caption templates per user
 - [x] RapidAPI Instagram integration
 - [x] Multi-resolution media handling
 - [x] Twitter API v2 integration
@@ -172,7 +174,6 @@ Configuration:
 - [x] Thread creation (replies chain)
 - [x] JSON archive database
 - [x] Deduplication (no re-archiving)
-- [x] Scheduled task execution
 - [x] Error handling and logging
 - [x] Configuration management
 - [x] Docker containerization
@@ -184,7 +185,7 @@ Configuration:
 
 ### 📊 Statistics
 
-- **Total Lines of Code**: ~1,200 (excluding docs/config)
+- **Total Lines of Code**: ~1,300 (excluding docs/config)
 - **Python Modules**: 7 well-organized files
 - **Documentation Pages**: 4 comprehensive guides
 - **Configuration Files**: 5 (including Docker)
@@ -198,7 +199,7 @@ Configuration:
 ### Basic Usage
 
 ```bash
-# Start automatic scheduling (1 hour intervals)
+# Start automatic scheduling (8 hour intervals)
 python main.py
 
 # Run once and exit
@@ -431,9 +432,10 @@ Total: ~47 KB of source code + 25 KB documentation
 
 ## Success Criteria Met
 
-✅ Archives Instagram stories from jkt48.gendis  
-✅ Posts to Twitter in organized threads  
-✅ Runs every 1 hour automatically  
+✅ Archives Instagram stories from configured accounts  
+✅ Posts to Twitter at the start of the next day  
+✅ Custom captions for Gendis and Lana  
+✅ Runs every 8 hours automatically  
 ✅ Handles rate limits responsibly  
 ✅ Uploads all pictures/videos  
 ✅ Tracks archived stories  

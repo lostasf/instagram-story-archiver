@@ -112,7 +112,7 @@ TWITTER_ACCESS_TOKEN=your_token
 TWITTER_ACCESS_SECRET=your_token_secret
 TWITTER_BEARER_TOKEN=your_bearer_token
 INSTAGRAM_USERNAME=jkt48.gendis
-CHECK_INTERVAL_HOURS=1
+# Scheduled for every 8 hours
 ```
 
 ### Step 7: Verify Setup
@@ -128,8 +128,7 @@ Gendis Story Archiver - Setup Test
 ============================================================
 Testing configuration...
 ✓ Configuration loaded successfully
-  - Instagram Username: jkt48.gendis
-  - Check Interval: 1 hour(s)
+  - Instagram Usernames: jkt48.gendis
   - Archive DB: ./archive.json
   - Media Cache: ./media_cache
 

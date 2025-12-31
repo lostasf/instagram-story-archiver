@@ -162,10 +162,12 @@ class ArchiveManager:
                 'tweet_ids': story_data.get('tweet_ids', []),
                 'media_urls': story_data.get('media_urls', []),
                 'taken_at': story_data.get('taken_at'),
+                'local_media_path': story_data.get('local_media_path'),
+                'media_type': story_data.get('media_type'),
             }
 
             account['archived_stories'].append(entry)
-            account['last_check'] = datetime.now().isoformat()
+
 
             logger.info(f"Added story {story_id_str} to archive for {instagram_username}")
             return self._save_archive()
@@ -193,6 +195,27 @@ class ArchiveManager:
 
         except Exception as e:
             logger.error(f"Error updating story tweets: {e}")
+            return False
+
+    def update_story_local_path(self, instagram_username: str, story_id: str, local_path: Optional[str]) -> bool:
+        """Update local media path for an archived story."""
+        try:
+            account = self._get_account(instagram_username)
+            story_id_str = str(story_id)
+
+            for entry in account.get('archived_stories', []):
+                if not isinstance(entry, dict):
+                    continue
+                if str(entry.get('story_id')) == story_id_str:
+                    entry['local_media_path'] = local_path
+                    logger.info(f"Updated story {story_id_str} with local path")
+                    return self._save_archive()
+
+            logger.warning(f"Story {story_id_str} not found in archive for {instagram_username}")
+            return False
+
+        except Exception as e:
+            logger.error(f"Error updating story local path: {e}")
             return False
 
     def get_anchor_tweet_id(self, instagram_username: Optional[str] = None) -> Optional[str]:

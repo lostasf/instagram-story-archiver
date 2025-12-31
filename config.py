@@ -77,6 +77,27 @@ class Config:
 
         return normalized
 
+    def get_story_caption(self, instagram_username: str, taken_at_timestamp: int) -> str:
+        """Get the customizable caption for a story tweet."""
+        username = instagram_username.strip().lstrip('@')
+        
+        # Format date as DD/MM/YYYY in GMT+7
+        from datetime import datetime, timedelta, timezone
+        utc_plus_7 = timezone(timedelta(hours=7))
+        dt = datetime.fromtimestamp(taken_at_timestamp, tz=utc_plus_7)
+        date_str = dt.strftime("%d/%m/%Y")
+
+        # Specific requirements for Gendis and Lana
+        if 'gendis' in username.lower():
+            return f"Instagram Story @Gendis_JKT48\n{date_str}\n\n#Mantrajiva"
+        
+        if 'lana' in username.lower():
+            # Matches 'lana' or 'jkt48.lana.a'
+            return f"Instagram Story Lana\n{date_str}"
+
+        # Default fallback
+        return f"Instagram Story {username}\n{date_str}"
+
     def get_anchor_text(self, instagram_username: str) -> str:
         username = instagram_username.strip().lstrip('@')
 

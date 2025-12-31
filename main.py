@@ -3,7 +3,8 @@
 Instagram Story Archiver
 Archive Instagram stories and post them to Twitter/X in per-account threads.
 
-Designed to run once per invocation - orchestrated by GitHub Actions every 1 hour.
+Designed to be run on a schedule - orchestrated by GitHub Actions every 8 hours.
+Posts stories at the start of the next day.
 """
 
 import logging
@@ -36,6 +37,8 @@ def main():
         help='Instagram username for --story-id (defaults to primary configured account)',
     )
     parser.add_argument('--status', action='store_true', help='Show archive status and exit')
+    parser.add_argument('--post', action='store_true', help='Force post pending stories')
+    parser.add_argument('--fetch-only', action='store_true', help='Only fetch and archive, do not post')
 
     args = parser.parse_args()
 
@@ -66,7 +69,19 @@ def main():
 
     logger.info(f"Starting archive check at {datetime.now()}")
     logger.info(f"Watching Instagram accounts: {', '.join(config.INSTAGRAM_USERNAMES)}")
-    archiver.archive_all_stories()
+    
+    # Always archive all stories
+    new_archived = archiver.archive_all_stories()
+    logger.info(f"Archived {new_archived} new stories")
+    
+    # Post pending stories unless --fetch-only is set
+    if not args.fetch_only:
+        logger.info("Checking for pending stories to post...")
+        new_posted = archiver.post_pending_stories()
+        logger.info(f"Posted {new_posted} pending stories")
+    else:
+        logger.info("Skipping post step (--fetch-only)")
+
     archiver.print_status()
     logger.info("Archive check completed")
 
