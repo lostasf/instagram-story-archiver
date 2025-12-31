@@ -219,28 +219,11 @@ class StoryArchiver:
             last_tweet_id = self.archive_manager.get_last_tweet_id(username) or anchor_id
             
             # Post all media as a thread
-            # Twitter allows up to 4 images per tweet or 1 video per tweet
-            # We group consecutive images together (up to 4) and keep videos in their own tweet
+            # Twitter allows up to 4 media items (images/videos) per tweet
             tweet_ids = []
             
-            # Prepare batches of media
-            media_batches = []
-            current_batch = []
-            
-            for path, media_type in zip(media_paths, media_types):
-                if media_type == 'video':
-                    if current_batch:
-                        media_batches.append(current_batch)
-                        current_batch = []
-                    media_batches.append([path])
-                else:
-                    current_batch.append(path)
-                    if len(current_batch) == 4:
-                        media_batches.append(current_batch)
-                        current_batch = []
-            
-            if current_batch:
-                media_batches.append(current_batch)
+            # Prepare batches of media (up to 4 items per tweet)
+            media_batches = [media_paths[i:i + 4] for i in range(0, len(media_paths), 4)]
             
             # Post each batch as a tweet
             for idx, batch_paths in enumerate(media_batches):

@@ -178,17 +178,20 @@ The archiver correctly handles Instagram stories with multiple media items (mixe
 - Maintains backward compatibility with older archive format
 
 **Post Stage:**
-- **Images**: Batches consecutive images (up to 4 per tweet, Twitter limit)
-- **Videos**: Posts 1 video per tweet (Twitter limitation)
-- **Unified Threads**: Photos and videos are mixed in the same thread, grouped where possible to minimize total tweets.
+- **Media Batching**: Batches up to 4 media items (images or videos) per tweet.
+- **Unified Threads**: Photos and videos can be mixed in the same tweet to minimize the total number of tweets in a thread.
 - Creates threaded tweets with progress indicators: `(1/2)`, `(2/2)`
 
 ### Example
 
 If an Instagram story has 2 images and 1 video:
 1. Archive downloads all 3 media items
-2. Posts to Twitter as 2 tweets in a thread:
-   - Tweet 1: 2 images + caption + `(1/2)`
+2. Posts to Twitter as 1 tweet (since total is <= 4):
+   - Tweet 1: 2 images + 1 video + caption
+
+If an Instagram story has 5 items (e.g., 4 images and 1 video):
+1. Posts to Twitter as 2 tweets:
+   - Tweet 1: 4 images + caption + `(1/2)`
    - Tweet 2: 1 video + caption + `(2/2)`
 
 Both tweets are replies in the same thread.

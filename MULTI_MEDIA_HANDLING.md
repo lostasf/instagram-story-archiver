@@ -21,19 +21,16 @@ Instagram stories can contain multiple media items (images or videos). Previousl
 
 #### Posting Logic
 
-**For Images:**
-- Twitter allows up to 4 images per tweet
-- Images are batched: 1-4 images = 1 tweet, 5-8 images = 2 tweets, etc.
-- Each tweet in the batch shows progress: `(1/2)`, `(2/2)`
+**Batching:**
+- Twitter allows up to 4 media items (images, videos, or GIFs) per tweet.
+- Media items are batched: 1-4 items = 1 tweet, 5-8 items = 2 tweets, etc.
+- This applies even if the story contains a mix of images and videos.
+- Each tweet in the batch shows progress: `(1/2)`, `(2/2)` (only if there are multiple tweets).
 
-**For Videos:**
-- Twitter allows only 1 video per tweet
-- Each video is posted as a separate tweet in the thread
-- Progress indicator shows which video: `(1/5)`, `(2/5)`, etc.
-
-**Mixed Media:**
-- If any video is present, treats all media as individual items
-- Posts each as a separate tweet (safest approach)
+**Unified Threads:**
+- Photos and videos are mixed in the same tweet whenever possible to minimize the total number of tweets in a thread.
+- If a story has 2 images and 1 video, they are posted together in a single tweet.
+- If a story has 5 items (e.g., 4 images and 1 video), it is split across 2 tweets in the thread.
 
 ### 3. Archive Data Structure
 
@@ -60,20 +57,16 @@ Instagram stories can contain multiple media items (images or videos). Previousl
 - Post stage: Creates 2 tweets
   - Tweet 1: 4 images with caption + "(1/2)"
   - Tweet 2: 1 image with caption + "(2/2)"
-- Both tweets are part of the thread
 
-### Example 2: Story with 8 Images
-- Archive stage: Downloads all 8 images
-- Post stage: Creates 2 tweets
-  - Tweet 1: 4 images with caption + "(1/2)"
-  - Tweet 2: 4 images with caption + "(2/2)"
+### Example 2: Story with 2 Images and 1 Video
+- Archive stage: Downloads all 3 media items
+- Post stage: Creates 1 tweet
+  - Tweet 1: 2 images and 1 video with caption
 
 ### Example 3: Story with 3 Videos
 - Archive stage: Downloads all 3 videos
-- Post stage: Creates 3 tweets
-  - Tweet 1: 1 video with caption + "(1/3)"
-  - Tweet 2: 1 video with caption + "(2/3)"
-  - Tweet 3: 1 video with caption + "(3/3)"
+- Post stage: Creates 1 tweet
+  - Tweet 1: 3 videos with caption
 
 ### Example 4: Story with 1 Image
 - Archive stage: Downloads 1 image
