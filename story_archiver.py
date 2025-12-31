@@ -220,73 +220,60 @@ class StoryArchiver:
             
             # Post all media as a thread
             # Twitter allows up to 4 images per tweet or 1 video per tweet
+            # We group consecutive images together (up to 4) and keep videos in their own tweet
             tweet_ids = []
             
-            # Check if we have videos (videos must be posted one per tweet)
-            has_video = any(t == 'video' for t in media_types if t)
+            # Prepare batches of media
+            media_batches = []
+            current_batch = []
             
-            if has_video:
-                # Post each media item separately (videos can't be grouped)
-                for idx, media_path in enumerate(media_paths):
-                    media_id = self.twitter_api.upload_media(media_path)
-                    if not media_id:
-                        logger.error(f"Failed to upload media {idx} for story {story_id}")
-                        continue
-                    
-                    # Add caption only to first tweet
-                    tweet_text = caption if idx == 0 else f"{caption}\n({idx + 1}/{len(media_paths)})"
-                    
-                    tweet_id = self.twitter_api.post_tweet(
-                        text=tweet_text,
-                        media_ids=[media_id],
-                        reply_to_id=last_tweet_id,
-                    )
-                    
-                    if not tweet_id:
-                        logger.error(f"Failed to post tweet for media {idx} of story {story_id}")
-                        break
-                    
-                    tweet_ids.append(tweet_id)
-                    last_tweet_id = tweet_id
-                    logger.info(f"Posted tweet {idx + 1}/{len(media_paths)} for story {story_id}")
-            else:
-                # All images - batch up to 4 per tweet
-                batch_size = 4
-                for batch_idx in range(0, len(media_paths), batch_size):
-                    batch_paths = media_paths[batch_idx:batch_idx + batch_size]
-                    
-                    # Upload all media in batch
-                    media_ids = []
-                    for path in batch_paths:
-                        media_id = self.twitter_api.upload_media(path)
-                        if media_id:
-                            media_ids.append(media_id)
-                    
-                    if not media_ids:
-                        logger.error(f"Failed to upload media batch {batch_idx // batch_size + 1} for story {story_id}")
-                        break
-                    
-                    # Add batch info to caption if there are multiple batches
-                    if len(media_paths) > batch_size:
-                        batch_num = batch_idx // batch_size + 1
-                        total_batches = (len(media_paths) + batch_size - 1) // batch_size
-                        tweet_text = f"{caption}\n({batch_num}/{total_batches})"
-                    else:
-                        tweet_text = caption
-                    
-                    tweet_id = self.twitter_api.post_tweet(
-                        text=tweet_text,
-                        media_ids=media_ids,
-                        reply_to_id=last_tweet_id,
-                    )
-                    
-                    if not tweet_id:
-                        logger.error(f"Failed to post tweet for batch {batch_idx // batch_size + 1} of story {story_id}")
-                        break
-                    
-                    tweet_ids.append(tweet_id)
-                    last_tweet_id = tweet_id
-                    logger.info(f"Posted tweet with {len(media_ids)} images for story {story_id}")
+            for path, media_type in zip(media_paths, media_types):
+                if media_type == 'video':
+                    if current_batch:
+                        media_batches.append(current_batch)
+                        current_batch = []
+                    media_batches.append([path])
+                else:
+                    current_batch.append(path)
+                    if len(current_batch) == 4:
+                        media_batches.append(current_batch)
+                        current_batch = []
+            
+            if current_batch:
+                media_batches.append(current_batch)
+            
+            # Post each batch as a tweet
+            for idx, batch_paths in enumerate(media_batches):
+                # Upload all media in batch
+                media_ids = []
+                for path in batch_paths:
+                    media_id = self.twitter_api.upload_media(path)
+                    if media_id:
+                        media_ids.append(media_id)
+                
+                if not media_ids:
+                    logger.error(f"Failed to upload media batch {idx + 1} for story {story_id}")
+                    continue
+                
+                # Add batch info to caption if there are multiple batches
+                if len(media_batches) > 1:
+                    tweet_text = f"{caption}\n({idx + 1}/{len(media_batches)})"
+                else:
+                    tweet_text = caption
+                
+                tweet_id = self.twitter_api.post_tweet(
+                    text=tweet_text,
+                    media_ids=media_ids,
+                    reply_to_id=last_tweet_id,
+                )
+                
+                if not tweet_id:
+                    logger.error(f"Failed to post tweet for batch {idx + 1} of story {story_id}")
+                    break
+                
+                tweet_ids.append(tweet_id)
+                last_tweet_id = tweet_id
+                logger.info(f"Posted tweet {idx + 1}/{len(media_batches)} for story {story_id}")
             
             if not tweet_ids:
                 logger.error(f"Failed to post any tweets for story {story_id}")
