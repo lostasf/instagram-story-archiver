@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
@@ -54,27 +55,20 @@ class StoryArchiver:
         logger.info(f"Anchor tweet created for {username}: {anchor_id}")
         return anchor_id
 
-    def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
-        """Process a single story: download media and post to Twitter thread."""
+    def archive_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
+        """Download media and save story to archive without posting to Twitter."""
         username = username.strip().lstrip('@')
-
         try:
             story_id = str(story_id)
-            logger.info(f"=== Starting process_story for {story_id} from {username} ===")
+            logger.info(f"=== Starting archive_story for {story_id} from {username} ===")
 
-            # Check if already archived (per account)
+            # Check if already archived
             archived_ids = self.archive_manager.get_archived_story_ids(username)
             if story_id in archived_ids:
                 logger.info(f"Story {story_id} already archived for {username}, skipping")
                 return False
 
-            # Ensure anchor tweet exists for this account
-            anchor_id = self._ensure_anchor_tweet(username)
-            if not anchor_id:
-                logger.error("Cannot proceed without anchor tweet")
-                return False
-
-            # Fetch story from Instagram when payload is not provided
+            # Fetch story data if not provided
             story_data = (
                 story_payload
                 if story_payload is not None
@@ -85,14 +79,12 @@ class StoryArchiver:
                 return False
 
             taken_at = int(story_data.get('taken_at', 0) or 0)
-
             media_list = self.instagram_api.extract_media_urls(story_data)
             if not media_list:
                 logger.warning(f"No media found in story {story_id}")
                 return False
 
-            logger.info(f"Story {story_id} has {len(media_list)} media items")
-
+            # Download and prepare media
             media = media_list[0]
             media_path = self.media_manager.download_media(
                 media['url'],
@@ -106,50 +98,111 @@ class StoryArchiver:
             if media['type'] == 'image':
                 media_path = self.media_manager.compress_image(media_path)
 
-            datetime_text = self._format_story_datetime(taken_at)
+            # Save to archive
+            archive_data = {
+                'media_count': len(media_list),
+                'media_urls': [m['url'] for m in media_list],
+                'tweet_ids': [],  # Not posted yet
+                'taken_at': taken_at,
+                'local_media_path': media_path,
+                'media_type': media['type'],
+            }
+            self.archive_manager.add_story(username, story_id, archive_data)
+            
+            logger.info(f"Successfully archived story {story_id} for {username} (local: {media_path})")
+            return True
+        except Exception as e:
+            logger.error(f"Error archiving story {story_id}: {e}", exc_info=True)
+            return False
 
+    def post_story(self, username: str, story_id: str) -> bool:
+        """Post an archived story to Twitter."""
+        username = username.strip().lstrip('@')
+        try:
+            story_id = str(story_id)
+            logger.info(f"=== Starting post_story for {story_id} from {username} ===")
+
+            # Get story from archive
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+            story_entry = next((s for s in stories if str(s.get('story_id')) == story_id), None)
+
+            if not story_entry:
+                logger.error(f"Story {story_id} not found in archive for {username}")
+                return False
+
+            if story_entry.get('tweet_ids'):
+                logger.info(f"Story {story_id} already posted for {username}")
+                return True
+
+            media_path = story_entry.get('local_media_path')
+            if not media_path or not os.path.exists(media_path):
+                logger.info(f"Local media missing for {story_id}, attempting re-download...")
+                media_urls = story_entry.get('media_urls', [])
+                media_type = story_entry.get('media_type', 'image')
+                if not media_urls:
+                    logger.error(f"No media URLs available to re-download story {story_id}")
+                    return False
+                
+                media_path = self.media_manager.download_media(
+                    media_urls[0],
+                    f"{username}_{story_id}_0",
+                    media_type,
+                )
+                if not media_path:
+                    logger.error(f"Failed to re-download media for story {story_id}")
+                    return False
+                
+                if media_type == 'image':
+                    media_path = self.media_manager.compress_image(media_path)
+
+            # Ensure anchor tweet
+            anchor_id = self._ensure_anchor_tweet(username)
+            if not anchor_id:
+                logger.error("Cannot proceed without anchor tweet")
+                return False
+
+            # Prepare caption
+            taken_at = story_entry.get('taken_at')
+            caption = self.config.get_story_caption(username, taken_at)
+            
             last_tweet_id = self.archive_manager.get_last_tweet_id(username) or anchor_id
 
+            # Upload and post
             media_id = self.twitter_api.upload_media(media_path)
             if not media_id:
                 logger.error(f"Failed to upload media for story {story_id}")
-                self.media_manager.cleanup_media(media_path)
                 return False
 
             tweet_id = self.twitter_api.post_tweet(
-                text=datetime_text,
+                text=caption,
                 media_ids=[media_id],
                 reply_to_id=last_tweet_id,
             )
 
             if not tweet_id:
                 logger.error(f"Failed to post tweet for story {story_id}")
-                self.media_manager.cleanup_media(media_path)
                 return False
 
+            # Update archive
+            self.archive_manager.update_story_tweets(username, story_id, [tweet_id])
             self.archive_manager.set_last_tweet_id(username, tweet_id)
+            self.archive_manager.update_story_local_path(username, story_id, None)
 
-            archive_data = {
-                'media_count': len(media_list),
-                'media_urls': [m['url'] for m in media_list],
-                'tweet_ids': [tweet_id],
-                'taken_at': taken_at,
-            }
-            self.archive_manager.add_story(username, story_id, archive_data)
-
+            # Cleanup
             self.media_manager.cleanup_media(media_path)
 
-            logger.info(f"Successfully archived story {story_id} for {username}")
-            logger.info(f"=== Completed process_story for {story_id} ===")
+            logger.info(f"Successfully posted story {story_id} for {username}")
             return True
-
         except Exception as e:
-            logger.error(
-                f"Error processing story {story_id} for {username}: {e}",
-                exc_info=True,
-            )
-            logger.info(f"=== Failed process_story for {story_id} ===")
+            logger.error(f"Error posting story {story_id}: {e}", exc_info=True)
             return False
+
+    def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
+        """Process a single story immediately: archive and post."""
+        if self.archive_story(username, story_id, story_payload):
+            return self.post_story(username, story_id)
+        return False
 
     def archive_all_stories_for_user(self, username: str) -> int:
         """Fetch and archive all available stories for the given username."""
@@ -200,8 +253,8 @@ class StoryArchiver:
                     logger.info(f"Story {story_id_str} already archived for {username}, skipping")
                     continue
 
-                success = self.process_story(username, story_id_str, story_payload=story)
-                logger.info(f"Story {story_id_str} processing result for {username}: {success}")
+                success = self.archive_story(username, story_id_str, story_payload=story)
+                logger.info(f"Story {story_id_str} archiving result for {username}: {success}")
 
                 if success:
                     processed_count += 1
@@ -221,6 +274,40 @@ class StoryArchiver:
         for username in self.config.INSTAGRAM_USERNAMES:
             total_processed += self.archive_all_stories_for_user(username)
         return total_processed
+
+    def post_pending_stories(self) -> int:
+        """Post all pending stories that meet the 'next day' criteria."""
+        total_posted = 0
+        
+        # Calculate the start of today in GMT+7
+        now = datetime.now(timezone(timedelta(hours=7)))
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Checking for pending stories taken before {today_start}")
+
+        for username in self.config.INSTAGRAM_USERNAMES:
+            username = username.strip().lstrip('@')
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+            
+            # Filter pending stories (not posted yet)
+            pending = [s for s in stories if not s.get('tweet_ids')]
+            
+            # Sort by taken_at
+            pending.sort(key=lambda x: int(x.get('taken_at', 0)))
+            
+            for story in pending:
+                taken_at = int(story.get('taken_at', 0))
+                taken_at_dt = datetime.fromtimestamp(taken_at, tz=timezone(timedelta(hours=7)))
+                
+                if taken_at_dt < today_start:
+                    logger.info(f"Posting pending story {story.get('story_id')} for {username} (taken at {taken_at_dt})")
+                    if self.post_story(username, story.get('story_id')):
+                        total_posted += 1
+                else:
+                    logger.info(f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping")
+
+        self.media_manager.cleanup_old_media()
+        return total_posted
 
     def print_status(self) -> None:
         stats = self.archive_manager.get_statistics()

@@ -1,12 +1,12 @@
 # GitHub Actions Setup Guide
 
-This project is configured to run automatically every 1 hour using GitHub Actions.
+This project is configured to run automatically every 8 hours using GitHub Actions.
 
 ## Overview
 
 Instead of running a local scheduler, the archiver is orchestrated by GitHub Actions:
 
-- **Trigger**: Every 1 hour (cron: `0 * * * *`)
+- **Trigger**: Every 8 hours (cron: `0 */8 * * *`)
 - **Execution**: Ubuntu latest runner
 - **Runtime**: ~2-5 minutes per run
 - **Storage**: Archive and logs committed back to repository

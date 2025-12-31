@@ -4,7 +4,7 @@ Get the Instagram Story Archiver running in 3 minutes using GitHub Actions! 🚀
 
 ## Option 1: GitHub Actions (Recommended) ⭐
 
-No local setup required - runs automatically every hour!
+No local setup required - runs automatically every 8 hours!
 
 ### 1. Fork Repository (30 seconds)
 
@@ -31,7 +31,7 @@ INSTAGRAM_USERNAME=jkt48.gendis
 
 ### 3. Done! ✅
 
-Go to **Actions** tab and watch it run automatically every hour.
+Go to **Actions** tab and watch it run automatically every 8 hours.
 
 **Learn more:** [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
 
@@ -118,11 +118,11 @@ docker-compose down
 
 1. ✓ Connects to Instagram API
 2. ✓ Fetches stories from jkt48.gendis
-3. ✓ Downloads media files
+3. ✓ Downloads and archives media files
 4. ✓ Compresses images if needed
-5. ✓ Posts to Twitter as thread
+5. ✓ Posts to Twitter at the start of the next day
 6. ✓ Records in archive.json
-7. ✓ Cleans up temporary files
+7. ✓ Cleans up temporary files after posting
 
 Takes 1-3 minutes per story depending on media size.
 
@@ -189,11 +189,11 @@ All tracked in `archive.json` with:
 |---------|-------|----------|
 | Instagram API | 1000 | Per month |
 | Twitter Media Upload | 1500 | Per 15 minutes |
-| Default Check Interval | 1 hour | Configurable |
+| Default Check Interval | 8 hours | Configurable |
 
 **Estimated Usage**: 
-- ~12 requests/day at 1-hour intervals
-- ~360 requests/month (well under 1000 limit)
+- ~3 requests/day at 8-hour intervals
+- ~90 requests/month (well under 1000 limit)
 - Plenty of room for multiple accounts
 
 ## Advanced Usage

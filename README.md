@@ -4,11 +4,12 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 
 ## ✨ Features
 
-- 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every hour
-- 🐦 **Twitter Thread Creation**: Posts each story as a thread with media
-- 💾 **Archive Database**: Keeps track of all archived stories
-- ⚙️ **Scheduled via GitHub Actions**: Runs automatically every hour
+- 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every 8 hours
+- 🐦 **Next-Day Twitter Threads**: Posts stories to Twitter at the start of the next day
+- 💾 **Archive Database**: Keeps track of all archived stories and local media
+- ⚙️ **Scheduled Logic**: Hits Instagram API every 8 hours, posts at 00:00 AM (start of next day)
 - 🖼️ **Media Optimization**: Automatically compresses images to meet Twitter size limits
+- 📝 **Customizable Captions**: Per-user caption templates (Gendis, Lana, etc.)
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
 - 🔄 **Auto-commit**: Archive updates tracked in git history
 
@@ -74,13 +75,17 @@ python test_setup.py
 
 ## How It Works
 
-### Story Fetching Flow
+### Story Fetching and Posting Flow
 
-1. **Check Instagram**: API queries all configured Instagram accounts for new stories
-2. **Download Media**: Images/videos from stories are downloaded
-3. **Optimize**: Images are compressed to meet Twitter's 5MB limit
-4. **Create Thread**: Each Instagram account gets its own Twitter thread (separate anchor tweet)
-5. **Archive**: Story IDs and tweet references are stored in `archive.json`
+1. **Check Instagram (Every 8 hours)**: API queries all configured Instagram accounts for new stories.
+2. **Download Media**: Images/videos from stories are downloaded and saved to a local cache.
+3. **Optimize**: Images are compressed to meet Twitter's 5MB limit.
+4. **Archive**: Story metadata and local file paths are stored in `archive.json`.
+5. **Post to Twitter (Start of Next Day)**: 
+   - When the script runs, it checks for archived stories that haven't been posted yet.
+   - If a story's timestamp is from a **previous day**, it is posted to its account's Twitter thread.
+   - Each story gets a customized caption based on the Instagram user.
+6. **Cleanup**: After successful posting, local media files are removed.
 
 ### Thread Structure
 
@@ -92,7 +97,7 @@ Each Instagram account gets its own thread:
 
 - **Instagram API**: 1000 requests/month (shared quota)
 - **Twitter API**: Subject to Twitter rate limits (media uploads typically allow 1500/15min)
-- **Check Interval**: Configurable (default: 1 hour to conserve quota)
+- **Check Interval**: Optimized to 8 hours (3 times per day) to conserve Instagram API quota
 
 ## Project Structure
 
@@ -235,8 +240,8 @@ python diagnose_twitter_oauth.py
 
 ## Future Enhancements
 
-- [ ] Support for multiple Instagram accounts
-- [ ] Custom hashtag/caption templates
+- [x] Support for multiple Instagram accounts
+- [x] Custom hashtag/caption templates
 - [ ] Story filtering (time-based, caption-based)
 - [ ] Web dashboard for status monitoring
 - [ ] Database backup and restoration
