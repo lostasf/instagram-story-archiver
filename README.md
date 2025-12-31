@@ -12,7 +12,7 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 - 📝 **Customizable Captions**: Per-user caption templates (Gendis, Lana, etc.)
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
 - 🔄 **Auto-commit**: Archive updates tracked in git history
-- 🎬 **Multi-Media Support**: Handles Instagram stories with 4+ media items (batches images, threads videos)
+- 🎬 **Multi-Media Support**: Handles Instagram stories with mixed images and videos (batches images, keeps videos in thread)
 
 ## 🚀 Quick Start (GitHub Actions)
 
@@ -168,7 +168,7 @@ Logs are written to both console and `archiver.log`:
 
 ## Multi-Media Story Handling
 
-The archiver correctly handles Instagram stories with multiple media items (4+ images or videos):
+The archiver correctly handles Instagram stories with multiple media items (mixed images and videos):
 
 ### How It Works
 
@@ -178,24 +178,48 @@ The archiver correctly handles Instagram stories with multiple media items (4+ i
 - Maintains backward compatibility with older archive format
 
 **Post Stage:**
-- **Images**: Batches up to 4 images per tweet (Twitter limit)
-  - 1-4 images → 1 tweet
-  - 5-8 images → 2 tweets
-  - 9+ images → multiple tweets
-- **Videos**: Posts 1 video per tweet (Twitter limitation)
+- **Media Batching**: Batches up to 4 media items (images or videos) per tweet.
+- **Unified Threads**: Photos and videos can be mixed in the same tweet to minimize the total number of tweets in a thread.
 - Creates threaded tweets with progress indicators: `(1/2)`, `(2/2)`
 
 ### Example
 
-If an Instagram story has 5 images:
-1. Archive downloads all 5 images
-2. Posts to Twitter as 2 tweets in a thread:
+If an Instagram story has 2 images and 1 video:
+1. Archive downloads all 3 media items
+2. Posts to Twitter as 1 tweet (since total is <= 4):
+   - Tweet 1: 2 images + 1 video + caption
+
+If an Instagram story has 5 items (e.g., 4 images and 1 video):
+1. Posts to Twitter as 2 tweets:
    - Tweet 1: 4 images + caption + `(1/2)`
-   - Tweet 2: 1 image + caption + `(2/2)`
-   
+   - Tweet 2: 1 video + caption + `(2/2)`
+
 Both tweets are replies in the same thread.
 
-See [MULTI_MEDIA_HANDLING.md](MULTI_MEDIA_HANDLING.md) for detailed documentation.
+## Customizing Caption Templates
+
+You can customize the text template for each Instagram account by modifying `config.py`.
+
+### How to Update
+
+1. Open `config.py`
+2. Locate the `get_story_caption` method
+3. Modify the return string for the desired username
+4. The template uses f-strings and supports `{date_str}` (DD/MM/YYYY)
+
+Example for Gendis:
+```python
+if 'gendis' in username.lower():
+    return f"Instagram Story @Gendis_JKT48\n{date_str}\n\n#Mantrajiva"
+```
+
+Result:
+```
+Instagram Story @Gendis_JKT48
+DD/MM/YYYY
+
+#Mantrajiva
+```
 
 ## Error Handling
 

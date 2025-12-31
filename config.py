@@ -78,7 +78,17 @@ class Config:
         return normalized
 
     def get_story_caption(self, instagram_username: str, taken_at_timestamp: int) -> str:
-        """Get the customizable caption for a story tweet."""
+        """
+        Get the customizable caption for a story tweet.
+        
+        TO UPDATE CAPTION TEMPLATES:
+        Modify the return values in this method based on the username.
+        The template follows the format:
+        Instagram Story @Username
+        DD/MM/YYYY
+        
+        #Hashtag
+        """
         username = instagram_username.strip().lstrip('@')
         
         # Format date as DD/MM/YYYY in GMT+7
