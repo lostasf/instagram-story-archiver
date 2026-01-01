@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--status', action='store_true', help='Show archive status and exit')
     parser.add_argument('--post', action='store_true', help='Force post pending stories')
     parser.add_argument('--fetch-only', action='store_true', help='Only fetch and archive, do not post')
+    parser.add_argument('--archive-only', action='store_true', help='Archive stories without posting (for testing)')
 
     args = parser.parse_args()
 
@@ -70,17 +71,22 @@ def main():
     logger.info(f"Starting archive check at {datetime.now()}")
     logger.info(f"Watching Instagram accounts: {', '.join(config.INSTAGRAM_USERNAMES)}")
     
-    # Always archive all stories
-    new_archived = archiver.archive_all_stories()
+    # Archive all stories (always do this)
+    if args.archive_only:
+        new_archived = archiver.archive_only()
+    else:
+        new_archived = archiver.archive_all_stories()
     logger.info(f"Archived {new_archived} new stories")
     
     # Post pending stories unless --fetch-only is set
-    if not args.fetch_only:
+    if not args.fetch_only and not args.archive_only:
         logger.info("Checking for pending stories to post...")
         new_posted = archiver.post_pending_stories()
         logger.info(f"Posted {new_posted} pending stories")
-    else:
+    elif args.fetch_only:
         logger.info("Skipping post step (--fetch-only)")
+    elif args.archive_only:
+        logger.info("Skipping post step (--archive-only)")
 
     archiver.print_status()
     logger.info("Archive check completed")
