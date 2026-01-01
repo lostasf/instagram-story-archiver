@@ -399,6 +399,8 @@ class StoryArchiver:
         username = username.strip().lstrip('@')
 
         try:
+            # Update last check timestamp immediately
+            self.archive_manager.set_last_check(username)
             logger.info(f"Starting story check for {username}")
 
             stories = self.instagram_api.get_user_stories(username)
@@ -488,16 +490,15 @@ class StoryArchiver:
         return total_processed
 
     def post_pending_stories(self) -> int:
-        """Post pending stories taken yesterday (GMT+7)."""
+        """Post all pending stories older than today (GMT+7), not just yesterday."""
         total_posted = 0
 
-        # Calculate the start of today and yesterday in GMT+7
+        # Calculate the start of today in GMT+7
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday_start = today_start - timedelta(days=1)
         logger.info(
-            "Checking for pending stories taken yesterday "
-            f"({yesterday_start} to {today_start}) (current time: {now})"
+            "Checking for pending stories older than today "
+            f"(taken before {today_start}) (current time: {now})"
         )
 
         for username in self.config.INSTAGRAM_USERNAMES:
@@ -515,25 +516,21 @@ class StoryArchiver:
             # Sort by taken_at timestamp (oldest first)
             pending.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
-            # Filter stories taken yesterday (yesterday_start <= taken_at < today_start)
+            # Filter stories older than today (taken_at < today_start)
             stories_to_post = []
             for story in pending:
                 taken_at = int(story.get('taken_at', 0) or 0)
                 taken_at_dt = datetime.fromtimestamp(taken_at, tz=timezone(timedelta(hours=7)))
 
-                if yesterday_start <= taken_at_dt < today_start:
+                if taken_at_dt < today_start:
                     stories_to_post.append(story)
                     logger.info(
                         f"Story {story.get('story_id')} for {username} qualifies for posting "
                         f"(taken at {taken_at_dt})"
                     )
-                elif taken_at_dt >= today_start:
-                    logger.info(
-                        f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping"
-                    )
                 else:
                     logger.info(
-                        f"Story {story.get('story_id')} for {username} is older than yesterday ({taken_at_dt}), skipping"
+                        f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping"
                     )
             
             if not stories_to_post:
