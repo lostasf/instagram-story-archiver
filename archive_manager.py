@@ -126,9 +126,11 @@ class ArchiveManager:
         if username not in accounts or not isinstance(accounts.get(username), dict):
             accounts[username] = _empty_account()
         else:
-            merged = _empty_account()
-            merged.update(deepcopy(accounts[username]))
-            accounts[username] = merged
+            # Merge existing account with defaults, preserving existing data
+            existing = accounts[username]
+            for key, value in _empty_account().items():
+                if key not in existing:
+                    existing[key] = value
         return accounts[username]
 
     def get_archived_story_ids(self, instagram_username: Optional[str] = None) -> Set[str]:
@@ -158,6 +160,7 @@ class ArchiveManager:
                 'story_id': story_id_str,
                 'instagram_username': instagram_username,
                 'archived_at': datetime.now().isoformat(),
+                'uploadTime': story_data.get('uploadTime') or story_data.get('taken_at'),
                 'media_count': story_data.get('media_count', 0),
                 'tweet_ids': story_data.get('tweet_ids', []),
                 'media_urls': story_data.get('media_urls', []),
