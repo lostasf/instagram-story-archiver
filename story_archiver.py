@@ -555,6 +555,58 @@ class StoryArchiver:
         logger.info(f"Total stories posted: {total_posted}")
         return total_posted
 
+    def log_next_day_story_count(self) -> int:
+        """Log how many pending stories are expected to be posted on the next day (GMT+7).
+
+        The archiver posts stories taken *yesterday* (GMT+7) when a run occurs on the
+        following day. This method forecasts how many stories taken *today* (GMT+7)
+        are currently queued to be posted tomorrow.
+        """
+
+        total_queued = 0
+
+        tz = timezone(timedelta(hours=7))
+        now = datetime.now(tz)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_start = today_start + timedelta(days=1)
+
+        logger.info(
+            "Forecasting next-day posting queue (stories taken today) "
+            f"({today_start} to {tomorrow_start}) (current time: {now})"
+        )
+
+        for username in self.config.INSTAGRAM_USERNAMES:
+            username = username.strip().lstrip('@')
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+
+            pending = [s for s in stories if isinstance(s, dict) and not s.get('tweet_ids')]
+
+            queued_for_tomorrow = 0
+            for story in pending:
+                if not isinstance(story, dict):
+                    continue
+
+                try:
+                    taken_at = int(story.get('taken_at') or 0)
+                except (TypeError, ValueError):
+                    continue
+
+                if not taken_at:
+                    continue
+
+                taken_at_dt = datetime.fromtimestamp(taken_at, tz=tz)
+                if today_start <= taken_at_dt < tomorrow_start:
+                    queued_for_tomorrow += 1
+
+            logger.info(
+                f"Next-day queue for {username}: {queued_for_tomorrow} story(ies)"
+            )
+            total_queued += queued_for_tomorrow
+
+        logger.info(f"Total stories queued for next-day posting: {total_queued}")
+        return total_queued
+
     def print_status(self) -> None:
         stats = self.archive_manager.get_statistics()
 
