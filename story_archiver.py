@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 from archive_manager import ArchiveManager
 from config import Config
@@ -84,31 +84,39 @@ class StoryArchiver:
                 logger.warning(f"No media found in story {story_id}")
                 return False
 
-            # Download and prepare ALL media items
+            # Download and prepare ALL media items (reuse cache if present)
             local_media_paths = []
             media_types = []
-            
+
             for idx, media in enumerate(media_list):
-                media_path = self.media_manager.download_media(
-                    media['url'],
-                    f"{username}_{story_id}_{idx}",
-                    media['type'],
-                )
+                media_type = media.get('type') or 'image'
+                media_url = media.get('url')
+                media_id = f"{username}_{story_id}_{idx}"
+
+                media_path = self.media_manager.get_cached_media_path(media_id, media_type)
+                if media_path:
+                    logger.info(f"Using cached {media_type} for story {story_id} ({idx + 1}/{len(media_list)}): {media_path}")
+                else:
+                    if not media_url:
+                        logger.warning(f"Missing media URL for story {story_id} item {idx}, skipping")
+                        continue
+                    media_path = self.media_manager.download_media(media_url, media_id, media_type)
+
                 if not media_path:
-                    logger.warning(f"Failed to download media {idx} for story {story_id}, continuing with others")
+                    logger.warning(f"Failed to prepare media {idx} for story {story_id}, continuing with others")
                     continue
 
-                if media['type'] == 'image':
+                if media_type == 'image' and not media_path.endswith('_compressed.jpg'):
                     media_path = self.media_manager.compress_image(media_path)
-                
+
                 local_media_paths.append(media_path)
-                media_types.append(media['type'])
-            
+                media_types.append(media_type)
+
             if not local_media_paths:
                 logger.error(f"Failed to download any media for story {story_id}")
                 return False
-            
-            logger.info(f"Downloaded {len(local_media_paths)} media items for story {story_id}")
+
+            logger.info(f"Prepared {len(local_media_paths)} media items for story {story_id}")
 
             # Save to archive with all media paths
             archive_data = {
@@ -150,61 +158,77 @@ class StoryArchiver:
                 logger.info(f"Story {story_id} already posted for {username}")
                 return True
 
-            # Get all media paths (new format) or fallback to single path (legacy)
-            media_paths = story_entry.get('local_media_paths', [])
-            media_types = story_entry.get('media_types', [])
-            
-            # Fallback to legacy single media format
-            if not media_paths:
+            # Ensure local media exists; reuse cache if present, otherwise (re)download.
+            stored_media_paths = story_entry.get('local_media_paths')
+            stored_media_types = story_entry.get('media_types')
+
+            if not isinstance(stored_media_paths, list):
+                stored_media_paths = []
+            if not isinstance(stored_media_types, list):
+                stored_media_types = []
+
+            # Backward compatibility: legacy single media format
+            if not stored_media_paths:
                 legacy_path = story_entry.get('local_media_path')
                 legacy_type = story_entry.get('media_type', 'image')
                 if legacy_path:
-                    media_paths = [legacy_path]
-                    media_types = [legacy_type]
-            
-            # Check if media exists or needs re-download
-            valid_paths = [p for p in media_paths if p and os.path.exists(p)]
-            
-            if not valid_paths:
-                logger.info(f"Local media missing for {story_id}, attempting re-download...")
-                media_urls = story_entry.get('media_urls', [])
-                if not media_urls:
-                    logger.error(f"No media URLs available to re-download story {story_id}")
-                    return False
-                
-                # Get stored media types if available, otherwise detect from URL
-                stored_media_types = story_entry.get('media_types', [])
-                
-                # Re-download all media
+                    stored_media_paths = [legacy_path]
+                    stored_media_types = [legacy_type]
+
+            media_urls = story_entry.get('media_urls') or []
+
+            # If we have URLs, prefer them as the source of truth for expected media count.
+            if media_urls:
+                expected_count = len(media_urls)
                 media_paths = []
                 media_types = []
+
                 for idx, url in enumerate(media_urls):
-                    # Use stored media type if available, otherwise detect from URL
-                    if idx < len(stored_media_types) and stored_media_types[idx]:
-                        media_type = stored_media_types[idx]
-                    else:
-                        media_type = 'video' if 'video' in url.lower() else 'image'
-                    
-                    media_path = self.media_manager.download_media(
-                        url,
-                        f"{username}_{story_id}_{idx}",
-                        media_type,
+                    media_type = (
+                        stored_media_types[idx]
+                        if idx < len(stored_media_types) and stored_media_types[idx]
+                        else ('video' if 'video' in str(url).lower() else 'image')
                     )
+
+                    existing_path = stored_media_paths[idx] if idx < len(stored_media_paths) else None
+                    if existing_path and os.path.exists(existing_path):
+                        media_path = existing_path
+                    else:
+                        media_id = f"{username}_{story_id}_{idx}"
+                        media_path = self.media_manager.get_cached_media_path(media_id, media_type)
+                        if not media_path:
+                            media_path = self.media_manager.download_media(url, media_id, media_type)
+
                     if not media_path:
-                        logger.warning(f"Failed to re-download media {idx} for story {story_id}")
+                        logger.error(f"Failed to prepare media {idx + 1}/{expected_count} for story {story_id}")
                         continue
-                    
-                    if media_type == 'image':
+
+                    if media_type == 'image' and not media_path.endswith('_compressed.jpg'):
                         media_path = self.media_manager.compress_image(media_path)
-                    
+
                     media_paths.append(media_path)
                     media_types.append(media_type)
-                
+
                 if not media_paths:
-                    logger.error(f"Failed to re-download any media for story {story_id}")
+                    logger.error(f"Failed to prepare any media for story {story_id}")
                     return False
+
+                if expected_count > 1 and len(media_paths) != expected_count:
+                    logger.error(
+                        f"Story {story_id} expects {expected_count} media items but only {len(media_paths)} were available. "
+                        "Will retry on next run."
+                    )
+                    return False
+
+                self.archive_manager.update_story_local_paths(username, story_id, media_paths)
             else:
+                # No URLs recorded (very old archive entries). Use whatever local paths exist.
+                valid_paths = [p for p in stored_media_paths if p and os.path.exists(p)]
+                if not valid_paths:
+                    logger.error(f"No local media paths available for story {story_id}")
+                    return False
                 media_paths = valid_paths
+                media_types = stored_media_types
 
             # Ensure anchor tweet
             anchor_id = self._ensure_anchor_tweet(username)
@@ -284,6 +308,92 @@ class StoryArchiver:
             return self.post_story(username, story_id)
         return False
 
+    def _sync_cache_only_stories(self, username: str, ignore_story_ids: Set[str]) -> int:
+        """Backfill archive entries for media already present in media_cache.
+
+        This is a safety net for cases where media was downloaded but the run
+        crashed before `archive.json` was updated.
+
+        We only add cache-only stories that are NOT present in the currently
+        fetched Instagram story list (ignore_story_ids), to avoid blocking normal
+        archiving which provides richer metadata.
+        """
+        username = username.strip().lstrip('@')
+        cache_dir = self.media_manager.cache_dir
+
+        try:
+            filenames = os.listdir(cache_dir)
+        except FileNotFoundError:
+            return 0
+
+        archived_ids = self.archive_manager.get_archived_story_ids(username)
+        grouped = {}
+
+        for filename in filenames:
+            if not filename.startswith(f"{username}_"):
+                continue
+
+            _, ext = os.path.splitext(filename)
+            ext = ext.lower()
+            if ext not in ('.jpg', '.mp4'):
+                continue
+
+            stem = filename.rsplit('.', 1)[0]
+            if stem.endswith('_compressed'):
+                stem = stem[: -len('_compressed')]
+
+            parts = stem.split('_')
+            if len(parts) < 3:
+                continue
+
+            story_id = parts[-2]
+            idx_str = parts[-1]
+            if not idx_str.isdigit():
+                continue
+
+            story_id_str = str(story_id)
+            if story_id_str in archived_ids or story_id_str in ignore_story_ids:
+                continue
+
+            media_type = 'video' if ext == '.mp4' else 'image'
+            grouped.setdefault(story_id_str, {})[int(idx_str)] = media_type
+
+        added = 0
+        for story_id_str, by_idx in grouped.items():
+            indices = sorted(by_idx.keys())
+
+            local_media_paths = []
+            media_types = []
+            for idx in indices:
+                media_type = by_idx[idx]
+                media_id = f"{username}_{story_id_str}_{idx}"
+                media_path = self.media_manager.get_cached_media_path(media_id, media_type)
+                if not media_path:
+                    continue
+                local_media_paths.append(media_path)
+                media_types.append(media_type)
+
+            if not local_media_paths:
+                continue
+
+            taken_at = int(min(os.path.getmtime(p) for p in local_media_paths))
+
+            archive_data = {
+                'media_count': len(local_media_paths),
+                'media_urls': [],
+                'tweet_ids': [],
+                'taken_at': taken_at,
+                'local_media_paths': local_media_paths,
+                'media_types': media_types,
+                'local_media_path': local_media_paths[0] if local_media_paths else None,
+                'media_type': media_types[0] if media_types else 'image',
+            }
+
+            if self.archive_manager.add_story(username, story_id_str, archive_data):
+                added += 1
+
+        return added
+
     def archive_all_stories_for_user(self, username: str) -> int:
         """Fetch and archive all available stories for the given username."""
         username = username.strip().lstrip('@')
@@ -314,6 +424,12 @@ class StoryArchiver:
             story_items.sort(key=_story_timestamp)
             logger.info(f"Found {len(story_items)} stories to evaluate for {username}")
 
+            story_ids_in_api = {
+                str(story.get('pk') or story.get('id'))
+                for story in story_items
+                if (story.get('pk') or story.get('id'))
+            }
+
             archived_ids = self.archive_manager.get_archived_story_ids(username)
             processed_count = 0
 
@@ -340,6 +456,13 @@ class StoryArchiver:
                     processed_count += 1
                     archived_ids.add(story_id_str)
 
+            cache_only_added = self._sync_cache_only_stories(username, story_ids_in_api)
+            if cache_only_added:
+                processed_count += cache_only_added
+                logger.info(
+                    f"Backfilled {cache_only_added} story(ies) already present in media_cache but missing from archive.json for {username}"
+                )
+
             logger.info(f"Story check completed for {username}")
             logger.info(f"New stories archived for {username}: {processed_count}")
             return processed_count
@@ -365,13 +488,17 @@ class StoryArchiver:
         return total_processed
 
     def post_pending_stories(self) -> int:
-        """Post all pending stories that were taken before the start of today (next day posting)."""
+        """Post pending stories taken yesterday (GMT+7)."""
         total_posted = 0
-        
-        # Calculate the start of today in GMT+7
+
+        # Calculate the start of today and yesterday in GMT+7
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        logger.info(f"Checking for pending stories taken before {today_start} (current time: {now})")
+        yesterday_start = today_start - timedelta(days=1)
+        logger.info(
+            "Checking for pending stories taken yesterday "
+            f"({yesterday_start} to {today_start}) (current time: {now})"
+        )
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
@@ -386,19 +513,28 @@ class StoryArchiver:
                 continue
                 
             # Sort by taken_at timestamp (oldest first)
-            pending.sort(key=lambda x: int(x.get('taken_at', 0)))
-            
-            # Filter stories taken before today started
+            pending.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
+
+            # Filter stories taken yesterday (yesterday_start <= taken_at < today_start)
             stories_to_post = []
             for story in pending:
-                taken_at = int(story.get('taken_at', 0))
+                taken_at = int(story.get('taken_at', 0) or 0)
                 taken_at_dt = datetime.fromtimestamp(taken_at, tz=timezone(timedelta(hours=7)))
-                
-                if taken_at_dt < today_start:
+
+                if yesterday_start <= taken_at_dt < today_start:
                     stories_to_post.append(story)
-                    logger.info(f"Story {story.get('story_id')} for {username} qualifies for posting (taken at {taken_at_dt})")
+                    logger.info(
+                        f"Story {story.get('story_id')} for {username} qualifies for posting "
+                        f"(taken at {taken_at_dt})"
+                    )
+                elif taken_at_dt >= today_start:
+                    logger.info(
+                        f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping"
+                    )
                 else:
-                    logger.info(f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping")
+                    logger.info(
+                        f"Story {story.get('story_id')} for {username} is older than yesterday ({taken_at_dt}), skipping"
+                    )
             
             if not stories_to_post:
                 logger.info(f"No stories qualify for posting for {username}")
