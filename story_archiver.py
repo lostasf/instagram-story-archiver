@@ -265,11 +265,12 @@ class StoryArchiver:
             # Update archive
             self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
             self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
-            self.archive_manager.update_story_local_paths(username, story_id, None)
+            # Keep local paths in archive so we know they are still in cache
+            # self.archive_manager.update_story_local_paths(username, story_id, None)
 
-            # Cleanup all media files
-            for media_path in media_paths:
-                self.media_manager.cleanup_media(media_path)
+            # Cleanup is now handled by rolling cache in cleanup_old_media()
+            # for media_path in media_paths:
+            #     self.media_manager.cleanup_media(media_path)
 
             logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
             return True

@@ -62,7 +62,8 @@ jobs:
           # Only add files that exist
           [ -f archive.json ] && git add archive.json
           [ -f archiver.log ] && git add archiver.log
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update archive and logs [skip ci]"
+          [ -d media_cache ] && git add media_cache/
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update archive, logs and media cache [skip ci]"
       
       - name: Push changes
         if: success()
