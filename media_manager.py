@@ -13,38 +13,53 @@ class MediaManager:
     def __init__(self, cache_dir: str):
         self.cache_dir = cache_dir
         Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    
+
+    def get_cached_media_path(self, media_id: str, media_type: str) -> Optional[str]:
+        """Return an existing cached media path for the given media_id/type, if any."""
+        file_ext = 'mp4' if media_type == 'video' else 'jpg'
+        base_path = os.path.join(self.cache_dir, f"{media_id}.{file_ext}")
+
+        if media_type == 'image':
+            compressed_path = os.path.join(self.cache_dir, f"{media_id}_compressed.jpg")
+            if os.path.exists(compressed_path):
+                return compressed_path
+
+        if os.path.exists(base_path):
+            return base_path
+
+        return None
+
     def download_media(self, url: str, media_id: str, media_type: str) -> Optional[str]:
         """
         Download media from URL and save to cache.
-        
+
         Args:
             url: URL of the media
             media_id: Unique identifier for the media
             media_type: 'image' or 'video'
-        
+
         Returns:
             Local file path if successful, None otherwise
         """
         try:
             logger.info(f"Downloading {media_type}: {url[:50]}...")
-            
+
             response = requests.get(url, timeout=30, stream=True)
             response.raise_for_status()
-            
+
             file_ext = 'mp4' if media_type == 'video' else 'jpg'
             file_path = os.path.join(self.cache_dir, f"{media_id}.{file_ext}")
-            
+
             with open(file_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
+
             file_size = os.path.getsize(file_path)
             logger.info(f"Downloaded {media_type} to {file_path} ({file_size} bytes)")
-            
+
             return file_path
-            
+
         except Exception as e:
             logger.error(f"Error downloading media: {e}")
             return None
