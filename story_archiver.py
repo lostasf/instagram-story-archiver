@@ -113,8 +113,7 @@ class StoryArchiver:
                 media_types.append(media_type)
 
             if not local_media_paths:
-                logger.error(f"Failed to download any media for story {story_id}")
-                return False
+                logger.warning(f"No media could be downloaded for story {story_id} at this time, but archiving metadata.")
 
             logger.info(f"Prepared {len(local_media_paths)} media items for story {story_id}")
 
@@ -289,12 +288,14 @@ class StoryArchiver:
             # Update archive
             self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
             self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
-            # Keep local paths in archive so we know they are still in cache
-            # self.archive_manager.update_story_local_paths(username, story_id, None)
-
-            # Cleanup is now handled by rolling cache in cleanup_old_media()
-            # for media_path in media_paths:
-            #     self.media_manager.cleanup_media(media_path)
+            
+            # Cleanup media files after successful posting
+            for media_path in media_paths:
+                if media_path and os.path.exists(media_path):
+                    self.media_manager.cleanup_media(media_path)
+            
+            # Clear local paths in archive
+            self.archive_manager.update_story_local_paths(username, story_id, [])
 
             logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
             return True
@@ -309,14 +310,10 @@ class StoryArchiver:
         return False
 
     def _sync_cache_only_stories(self, username: str, ignore_story_ids: Set[str]) -> int:
-        """Backfill archive entries for media already present in media_cache.
+        """Backfill archive entries for media already present in media_cache and cleanup posted media.
 
-        This is a safety net for cases where media was downloaded but the run
-        crashed before `archive.json` was updated.
-
-        We only add cache-only stories that are NOT present in the currently
-        fetched Instagram story list (ignore_story_ids), to avoid blocking normal
-        archiving which provides richer metadata.
+        1. Backfills missing stories from cache (safety net for crashes).
+        2. Deletes media from cache if the corresponding story has already been posted.
         """
         username = username.strip().lstrip('@')
         cache_dir = self.media_manager.cache_dir
@@ -327,7 +324,12 @@ class StoryArchiver:
             return 0
 
         archived_ids = self.archive_manager.get_archived_story_ids(username)
+        stats = self.archive_manager.get_statistics(username)
+        stories = stats.get('stories', [])
+        posted_ids = {str(s.get('story_id')) for s in stories if s.get('tweet_ids')}
+        
         grouped = {}
+        cleaned_count = 0
 
         for filename in filenames:
             if not filename.startswith(f"{username}_"):
@@ -339,8 +341,10 @@ class StoryArchiver:
                 continue
 
             stem = filename.rsplit('.', 1)[0]
+            is_compressed = False
             if stem.endswith('_compressed'):
                 stem = stem[: -len('_compressed')]
+                is_compressed = True
 
             parts = stem.split('_')
             if len(parts) < 3:
@@ -352,11 +356,23 @@ class StoryArchiver:
                 continue
 
             story_id_str = str(story_id)
+            
+            # If already posted, delete the file
+            if story_id_str in posted_ids:
+                file_path = os.path.join(cache_dir, filename)
+                if self.media_manager.cleanup_media(file_path):
+                    cleaned_count += 1
+                continue
+
+            # If already archived but not posted, skip backfilling
             if story_id_str in archived_ids or story_id_str in ignore_story_ids:
                 continue
 
             media_type = 'video' if ext == '.mp4' else 'image'
             grouped.setdefault(story_id_str, {})[int(idx_str)] = media_type
+
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} already-posted media files for {username}")
 
         added = 0
         for story_id_str, by_idx in grouped.items():
@@ -490,16 +506,11 @@ class StoryArchiver:
         return total_processed
 
     def post_pending_stories(self) -> int:
-        """Post all pending stories older than today (GMT+7), not just yesterday."""
+        """Post all pending stories that have been archived but not yet posted to Twitter."""
         total_posted = 0
 
-        # Calculate the start of today in GMT+7
         now = datetime.now(timezone(timedelta(hours=7)))
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        logger.info(
-            "Checking for pending stories older than today "
-            f"(taken before {today_start}) (current time: {now})"
-        )
+        logger.info(f"Checking for pending stories to post (current time: {now})")
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
@@ -507,42 +518,21 @@ class StoryArchiver:
             stories = stats.get('stories', [])
             
             # Filter pending stories (not posted yet - no tweet_ids)
-            pending = [s for s in stories if not s.get('tweet_ids')]
+            stories_to_post = [s for s in stories if not s.get('tweet_ids')]
             
-            if not pending:
+            if not stories_to_post:
                 logger.info(f"No pending stories for {username}")
                 continue
                 
             # Sort by taken_at timestamp (oldest first)
-            pending.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
+            stories_to_post.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
-            # Filter stories older than today (taken_at < today_start)
-            stories_to_post = []
-            for story in pending:
-                taken_at = int(story.get('taken_at', 0) or 0)
-                taken_at_dt = datetime.fromtimestamp(taken_at, tz=timezone(timedelta(hours=7)))
-
-                if taken_at_dt < today_start:
-                    stories_to_post.append(story)
-                    logger.info(
-                        f"Story {story.get('story_id')} for {username} qualifies for posting "
-                        f"(taken at {taken_at_dt})"
-                    )
-                else:
-                    logger.info(
-                        f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping"
-                    )
-            
-            if not stories_to_post:
-                logger.info(f"No stories qualify for posting for {username}")
-                continue
-                
-            logger.info(f"Posting {len(stories_to_post)} stories for {username}")
+            logger.info(f"Found {len(stories_to_post)} pending stories for {username}")
             
             # Post each qualifying story
             for story in stories_to_post:
                 story_id = story.get('story_id')
-                logger.info(f"Posting story {story_id} for {username}")
+                logger.info(f"Processing pending story {story_id} for {username}")
                 if self.post_story(username, story_id):
                     total_posted += 1
                 else:
@@ -552,25 +542,10 @@ class StoryArchiver:
         logger.info(f"Total stories posted: {total_posted}")
         return total_posted
 
-    def log_next_day_story_count(self) -> int:
-        """Log how many pending stories are expected to be posted on the next day (GMT+7).
+    def log_pending_story_count(self) -> int:
+        """Log how many pending stories are currently in the archive."""
 
-        The archiver posts stories taken *yesterday* (GMT+7) when a run occurs on the
-        following day. This method forecasts how many stories taken *today* (GMT+7)
-        are currently queued to be posted tomorrow.
-        """
-
-        total_queued = 0
-
-        tz = timezone(timedelta(hours=7))
-        now = datetime.now(tz)
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        tomorrow_start = today_start + timedelta(days=1)
-
-        logger.info(
-            "Forecasting next-day posting queue (stories taken today) "
-            f"({today_start} to {tomorrow_start}) (current time: {now})"
-        )
+        total_pending = 0
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
@@ -578,31 +553,12 @@ class StoryArchiver:
             stories = stats.get('stories', [])
 
             pending = [s for s in stories if isinstance(s, dict) and not s.get('tweet_ids')]
+            count = len(pending)
+            logger.info(f"Pending queue for {username}: {count} story(ies)")
+            total_pending += count
 
-            queued_for_tomorrow = 0
-            for story in pending:
-                if not isinstance(story, dict):
-                    continue
-
-                try:
-                    taken_at = int(story.get('taken_at') or 0)
-                except (TypeError, ValueError):
-                    continue
-
-                if not taken_at:
-                    continue
-
-                taken_at_dt = datetime.fromtimestamp(taken_at, tz=tz)
-                if today_start <= taken_at_dt < tomorrow_start:
-                    queued_for_tomorrow += 1
-
-            logger.info(
-                f"Next-day queue for {username}: {queued_for_tomorrow} story(ies)"
-            )
-            total_queued += queued_for_tomorrow
-
-        logger.info(f"Total stories queued for next-day posting: {total_queued}")
-        return total_queued
+        logger.info(f"Total stories currently pending: {total_pending}")
+        return total_pending
 
     def print_status(self) -> None:
         stats = self.archive_manager.get_statistics()
