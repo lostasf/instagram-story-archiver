@@ -354,38 +354,68 @@ class StoryArchiver:
             total_processed += self.archive_all_stories_for_user(username)
         return total_processed
 
+    def archive_only(self) -> int:
+        """Archive all available stories but DO NOT post them (for testing/debugging)."""
+        total_processed = 0
+        logger.info("Starting archive-only mode (no posting)")
+        for username in self.config.INSTAGRAM_USERNAMES:
+            total_processed += self.archive_all_stories_for_user(username)
+        logger.info(f"Archive-only completed: {total_processed} stories archived")
+        return total_processed
+
     def post_pending_stories(self) -> int:
-        """Post all pending stories that meet the 'next day' criteria."""
+        """Post all pending stories that were taken before the start of today (next day posting)."""
         total_posted = 0
         
         # Calculate the start of today in GMT+7
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        logger.info(f"Checking for pending stories taken before {today_start}")
+        logger.info(f"Checking for pending stories taken before {today_start} (current time: {now})")
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
             stats = self.archive_manager.get_statistics(username)
             stories = stats.get('stories', [])
             
-            # Filter pending stories (not posted yet)
+            # Filter pending stories (not posted yet - no tweet_ids)
             pending = [s for s in stories if not s.get('tweet_ids')]
             
-            # Sort by taken_at
+            if not pending:
+                logger.info(f"No pending stories for {username}")
+                continue
+                
+            # Sort by taken_at timestamp (oldest first)
             pending.sort(key=lambda x: int(x.get('taken_at', 0)))
             
+            # Filter stories taken before today started
+            stories_to_post = []
             for story in pending:
                 taken_at = int(story.get('taken_at', 0))
                 taken_at_dt = datetime.fromtimestamp(taken_at, tz=timezone(timedelta(hours=7)))
                 
                 if taken_at_dt < today_start:
-                    logger.info(f"Posting pending story {story.get('story_id')} for {username} (taken at {taken_at_dt})")
-                    if self.post_story(username, story.get('story_id')):
-                        total_posted += 1
+                    stories_to_post.append(story)
+                    logger.info(f"Story {story.get('story_id')} for {username} qualifies for posting (taken at {taken_at_dt})")
                 else:
                     logger.info(f"Story {story.get('story_id')} for {username} is from today ({taken_at_dt}), skipping")
+            
+            if not stories_to_post:
+                logger.info(f"No stories qualify for posting for {username}")
+                continue
+                
+            logger.info(f"Posting {len(stories_to_post)} stories for {username}")
+            
+            # Post each qualifying story
+            for story in stories_to_post:
+                story_id = story.get('story_id')
+                logger.info(f"Posting story {story_id} for {username}")
+                if self.post_story(username, story_id):
+                    total_posted += 1
+                else:
+                    logger.error(f"Failed to post story {story_id} for {username}")
 
         self.media_manager.cleanup_old_media()
+        logger.info(f"Total stories posted: {total_posted}")
         return total_posted
 
     def print_status(self) -> None:
