@@ -43,7 +43,7 @@ env/
 .DS_Store
 
 # Project-specific
-media_cache/
+# media_cache/ - removed from ignore to allow persistence in repo
 *.pyc
 .pytest_cache/
 htmlcov/
