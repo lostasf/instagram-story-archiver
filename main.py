@@ -93,7 +93,7 @@ def main():
     elif args.archive_only:
         logger.info("Skipping post step (--archive-only)")
 
-    archiver.log_next_day_story_count()
+    archiver.log_pending_story_count()
 
     archiver.print_status()
     logger.info("Archive check completed")
