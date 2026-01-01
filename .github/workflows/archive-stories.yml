@@ -60,7 +60,11 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           # Add files to track - including new untracked files
-          git add archive.json archiver.log media_cache/ || true
+          git add archive.json archiver.log || true
+          # Add media_cache directory if there are files in it
+          if [ -n "$(find media_cache -type f ! -name '.gitkeep')" ]; then
+            git add media_cache/
+          fi
           # Check if there are changes (including new files)
           git diff --quiet && git diff --cached --quiet || git commit -m "chore: update archive, logs and media cache [skip ci]"
       

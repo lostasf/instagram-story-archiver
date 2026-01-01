@@ -79,6 +79,7 @@ class StoryArchiver:
                 return False
 
             taken_at = int(story_data.get('taken_at', 0) or 0)
+            uploadTime = taken_at  # uploadTime is the same as taken_at from Instagram API
             media_list = self.instagram_api.extract_media_urls(story_data)
             if not media_list:
                 logger.warning(f"No media found in story {story_id}")
@@ -119,6 +120,7 @@ class StoryArchiver:
 
             # Save to archive with all media paths
             archive_data = {
+                'uploadTime': uploadTime,
                 'media_count': len(media_list),
                 'media_urls': [m['url'] for m in media_list],
                 'tweet_ids': [],  # Not posted yet
@@ -395,6 +397,7 @@ class StoryArchiver:
             taken_at = int(min(os.path.getmtime(p) for p in local_media_paths))
 
             archive_data = {
+                'uploadTime': taken_at,
                 'media_count': len(local_media_paths),
                 'media_urls': [],
                 'tweet_ids': [],
@@ -506,29 +509,76 @@ class StoryArchiver:
         return total_processed
 
     def post_pending_stories(self) -> int:
-        """Post all pending stories that have been archived but not yet posted to Twitter."""
+        """Post all pending stories that have been archived but not yet posted to Twitter.
+
+        Logic:
+        1. Get current date in GMT+7 timezone
+        2. Find stories with empty tweet_ids AND uploadTime < today (before today)
+        3. Post those stories to Twitter
+        4. After posting, update metadata and delete media files
+        5. Log stories uploaded on the same day as planned for next day
+        """
         total_posted = 0
 
         now = datetime.now(timezone(timedelta(hours=7)))
-        logger.info(f"Checking for pending stories to post (current time: {now})")
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(f"Checking for pending stories to post (current time: {now}, today start: {today_start})")
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
             stats = self.archive_manager.get_statistics(username)
             stories = stats.get('stories', [])
-            
-            # Filter pending stories (not posted yet - no tweet_ids)
-            stories_to_post = [s for s in stories if not s.get('tweet_ids')]
-            
-            if not stories_to_post:
+
+            # Separate stories into two groups:
+            # - Stories to post: uploaded before today (uploadTime < today_start)
+            # - Stories planned for tomorrow: uploaded today (uploadTime >= today_start)
+            stories_to_post = []
+            stories_planned = []
+
+            for story in stories:
+                # Only consider unposted stories (no tweet_ids)
+                if not story.get('tweet_ids'):
+                    uploadTime = story.get('uploadTime') or story.get('taken_at')
+                    if uploadTime is None:
+                        logger.warning(f"Story {story.get('story_id')} has no uploadTime/taken_at, skipping")
+                        continue
+
+                    try:
+                        uploadTime_int = int(uploadTime)
+                        upload_datetime = datetime.fromtimestamp(uploadTime_int, tz=timezone(timedelta(hours=7)))
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Invalid uploadTime for story {story.get('story_id')}: {e}, skipping")
+                        continue
+
+                    # Check if story was uploaded before today or today
+                    if upload_datetime < today_start:
+                        stories_to_post.append(story)
+                    else:
+                        stories_planned.append(story)
+
+            if not stories_to_post and not stories_planned:
                 logger.info(f"No pending stories for {username}")
                 continue
-                
-            # Sort by taken_at timestamp (oldest first)
-            stories_to_post.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
-            logger.info(f"Found {len(stories_to_post)} pending stories for {username}")
-            
+            # Log stories planned for next day
+            if stories_planned:
+                planned_count = len(stories_planned)
+                logger.info(f"Stories uploaded today for {username}: {planned_count} (planned for next day)")
+                for story in sorted(stories_planned, key=lambda x: int(x.get('uploadTime', 0) or 0)):
+                    story_id = story.get('story_id')
+                    uploadTime = story.get('uploadTime')
+                    upload_datetime = datetime.fromtimestamp(int(uploadTime), tz=timezone(timedelta(hours=7)))
+                    logger.info(f"  - Story {story_id} uploaded at {upload_datetime} (planned for next day)")
+
+            if not stories_to_post:
+                logger.info(f"No stories to post for {username} (all uploaded today)")
+                continue
+
+            # Sort stories to post by uploadTime (oldest first)
+            stories_to_post.sort(key=lambda x: int(x.get('uploadTime', 0) or 0))
+
+            logger.info(f"Found {len(stories_to_post)} stories to post for {username}")
+
             # Post each qualifying story
             for story in stories_to_post:
                 story_id = story.get('story_id')
@@ -538,7 +588,6 @@ class StoryArchiver:
                 else:
                     logger.error(f"Failed to post story {story_id} for {username}")
 
-        self.media_manager.cleanup_old_media()
         logger.info(f"Total stories posted: {total_posted}")
         return total_posted
 
