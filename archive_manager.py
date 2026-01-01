@@ -277,6 +277,17 @@ class ArchiveManager:
             logger.error(f"Error setting last tweet ID: {e}")
             return False
 
+    def set_last_check(self, instagram_username: str) -> bool:
+        """Set the last check timestamp for the account."""
+        try:
+            account = self._get_account(instagram_username)
+            account['last_check'] = datetime.now().isoformat()
+            logger.debug(f"Set last check for {instagram_username}: {account['last_check']}")
+            return self._save_archive()
+        except Exception as e:
+            logger.error(f"Error setting last check: {e}")
+            return False
+
     def get_statistics(self, instagram_username: Optional[str] = None) -> Dict[str, Any]:
         """Get archive statistics for one or all accounts."""
         if instagram_username:

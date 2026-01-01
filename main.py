@@ -14,15 +14,20 @@ from datetime import datetime
 from config import Config
 from story_archiver import StoryArchiver
 
+# Configure logging to ensure logs are written and flushed immediately
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('archiver.log'),
+        logging.FileHandler('archiver.log', mode='a'),  # Append mode
         logging.StreamHandler(),
     ],
 )
 logger = logging.getLogger(__name__)
+
+# Force log flushing
+for handler in logger.handlers:
+    handler.flush = lambda: None  # Disable buffering
 
 
 def main():

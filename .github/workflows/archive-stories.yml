@@ -55,15 +55,14 @@ jobs:
           retention-days: 7
       
       - name: Commit archive changes
-        if: success()
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          # Only add files that exist
-          [ -f archive.json ] && git add archive.json
-          [ -f archiver.log ] && git add archiver.log
-          [ -d media_cache ] && git add media_cache/
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update archive, logs and media cache [skip ci]"
+       if: success()
+       run: |
+         git config --local user.email "github-actions[bot]@users.noreply.github.com"
+         git config --local user.name "github-actions[bot]"
+         # Add files to track - including new untracked files
+         git add archive.json archiver.log media_cache/ || true
+         # Check if there are changes (including new files)
+         git diff --quiet && git diff --cached --quiet || git commit -m "chore: update archive, logs and media cache [skip ci]"
       
       - name: Push changes
         if: success()
