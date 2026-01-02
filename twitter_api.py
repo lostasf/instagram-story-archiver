@@ -11,25 +11,56 @@ logger = logging.getLogger(__name__)
 class TwitterAPI:
     def __init__(self, config: Config):
         self.config = config
-        self.client = tweepy.Client(
-            bearer_token=config.TWITTER_BEARER_TOKEN,
-            consumer_key=config.TWITTER_API_KEY,
-            consumer_secret=config.TWITTER_API_SECRET,
-            access_token=config.TWITTER_ACCESS_TOKEN,
-            access_token_secret=config.TWITTER_ACCESS_SECRET,
-            wait_on_rate_limit=True
-        )
+        
+        # Log which credentials are available (without showing values)
+        has_api_key = bool(config.TWITTER_API_KEY)
+        has_api_secret = bool(config.TWITTER_API_SECRET)
+        has_access_token = bool(config.TWITTER_ACCESS_TOKEN)
+        has_access_secret = bool(config.TWITTER_ACCESS_SECRET)
+        has_bearer_token = bool(config.TWITTER_BEARER_TOKEN)
+        
+        logger.info(f"Twitter Credentials Status: "
+                    f"API Key: {'Found' if has_api_key else 'Missing'}, "
+                    f"API Secret: {'Found' if has_api_secret else 'Missing'}, "
+                    f"Access Token: {'Found' if has_access_token else 'Missing'}, "
+                    f"Access Secret: {'Found' if has_access_secret else 'Missing'}, "
+                    f"Bearer Token: {'Found' if has_bearer_token else 'Missing'}")
+        
+        # Initialize v2 client
+        # If we have OAuth 1.0a tokens, prioritize them for the client.
+        if has_api_key and has_api_secret and has_access_token and has_access_secret:
+            logger.info("Initializing Twitter API v2 Client with OAuth 1.0a User Context")
+            self.client = tweepy.Client(
+                consumer_key=config.TWITTER_API_KEY,
+                consumer_secret=config.TWITTER_API_SECRET,
+                access_token=config.TWITTER_ACCESS_TOKEN,
+                access_token_secret=config.TWITTER_ACCESS_SECRET,
+                wait_on_rate_limit=True
+            )
+        elif has_bearer_token:
+            logger.info("Initializing Twitter API v2 Client with Bearer Token")
+            self.client = tweepy.Client(
+                bearer_token=config.TWITTER_BEARER_TOKEN,
+                wait_on_rate_limit=True
+            )
+        else:
+            logger.error("No valid Twitter credentials found!")
+            raise ValueError("No valid Twitter credentials found")
 
-        # Keep v1 client only for media upload as fallback
-        self.v1_client = tweepy.API(
-            auth=tweepy.OAuth1UserHandler(
-                config.TWITTER_API_KEY,
-                config.TWITTER_API_SECRET,
-                config.TWITTER_ACCESS_TOKEN,
-                config.TWITTER_ACCESS_SECRET
-            ),
-            wait_on_rate_limit=True
-        )
+        # Keep v1 client for media upload (always requires OAuth 1.0a)
+        if has_api_key and has_api_secret and has_access_token and has_access_secret:
+            self.v1_client = tweepy.API(
+                auth=tweepy.OAuth1UserHandler(
+                    config.TWITTER_API_KEY,
+                    config.TWITTER_API_SECRET,
+                    config.TWITTER_ACCESS_TOKEN,
+                    config.TWITTER_ACCESS_SECRET
+                ),
+                wait_on_rate_limit=True
+            )
+        else:
+            logger.warning("Twitter API v1.1 Client NOT initialized (requires OAuth 1.0a)")
+            self.v1_client = None
 
     def verify_credentials(self) -> bool:
         """
@@ -51,12 +82,15 @@ class TwitterAPI:
             logger.info(f"Authenticated as: @{username}")
 
             # Try to verify v1.1 credentials (used for media upload)
-            try:
-                v1_verify = self.v1_client.verify_credentials()
-                logger.info(f"v1.1 API verified as: @{v1_verify.screen_name}")
-            except Exception as e:
-                logger.warning(f"v1.1 API verification failed: {e}")
-                logger.warning("Media upload might not work")
+            if self.v1_client:
+                try:
+                    v1_verify = self.v1_client.verify_credentials()
+                    logger.info(f"v1.1 API verified as: @{v1_verify.screen_name}")
+                except Exception as e:
+                    logger.warning(f"v1.1 API verification failed: {e}")
+                    logger.warning("Media upload might not work")
+            else:
+                logger.warning("v1.1 API client not initialized. Media upload will not work.")
 
             # Test write permissions by checking if we can create a tweet
             # We don't actually post, just verify the client is configured correctly
@@ -104,6 +138,10 @@ class TwitterAPI:
         Upload media to Twitter and return media ID.
         Uses OAuth 1.0a for media upload with better error handling.
         """
+        if not self.v1_client:
+            logger.error("Cannot upload media: v1.1 API client not initialized (OAuth 1.0a tokens missing)")
+            return None
+
         try:
             logger.info(f"Uploading media: {media_path}")
 

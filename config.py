@@ -18,10 +18,10 @@ class Config:
         self.RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY')
         self.RAPIDAPI_HOST = os.getenv('RAPIDAPI_HOST', 'instagram120.p.rapidapi.com')
 
-        self.TWITTER_API_KEY = os.getenv('TWITTER_API_KEY')
-        self.TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET')
+        self.TWITTER_API_KEY = os.getenv('TWITTER_API_KEY') or os.getenv('TWITTER_CONSUMER_KEY')
+        self.TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET') or os.getenv('TWITTER_CONSUMER_SECRET')
         self.TWITTER_ACCESS_TOKEN = os.getenv('TWITTER_ACCESS_TOKEN')
-        self.TWITTER_ACCESS_SECRET = os.getenv('TWITTER_ACCESS_SECRET')
+        self.TWITTER_ACCESS_SECRET = os.getenv('TWITTER_ACCESS_SECRET') or os.getenv('TWITTER_ACCESS_TOKEN_SECRET')
         self.TWITTER_BEARER_TOKEN = os.getenv('TWITTER_BEARER_TOKEN')
 
         instagram_username_raw = os.getenv('INSTAGRAM_USERNAME') or 'jkt48.gendis'
@@ -141,7 +141,7 @@ class Config:
             'TWITTER_API_SECRET',
             'TWITTER_ACCESS_TOKEN',
             'TWITTER_ACCESS_SECRET',
-            'TWITTER_BEARER_TOKEN',
+            # Bearer token is optional as we prefer OAuth 1.0a for better permissions
         ]
         missing = [key for key in required if not getattr(self, key)]
         if missing:
