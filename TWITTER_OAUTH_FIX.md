@@ -47,7 +47,13 @@ TWITTER_ACCESS_SECRET=your_new_access_secret
 
 ### Step 5: Test Configuration
 
-Run the test script to verify the fix:
+Run the verification command to test your credentials:
+
+```bash
+python main.py --verify-twitter
+```
+
+Or run the full test script:
 
 ```bash
 source venv/bin/activate

@@ -227,7 +227,8 @@ python main.py --story-id <story_id> --username <username>
 - `GITHUB_ACTIONS_SETUP.md` - Complete GitHub Actions setup
 - `DEVELOPER_NOTES.md` - Technical reference (architecture, code details)
 - `.github/README.md` - Workflow-specific documentation
-- `TWITTER_OAUTH_FIX.md` - Twitter OAuth troubleshooting
+- `TWITTER_OAUTH_PERMISSIONS_FIX.md` - Twitter OAuth troubleshooting (detailed)
+- `QUICK_FIX_CHECKLIST.md` - Quick checklist for Twitter OAuth issues
 - `AI_AGENT_GUIDE.md` - This document (for AI agents)
 
 ## Common Errors
@@ -245,7 +246,8 @@ python main.py --story-id <story_id> --username <username>
 ### "403 Forbidden - OAuth1 app permissions"
 - Twitter app permissions must be "Read and Write"
 - Regenerate Access Token and Secret after changing permissions
-- See `TWITTER_OAUTH_FIX.md` for details
+- See `TWITTER_OAUTH_PERMISSIONS_FIX.md` for detailed fix instructions
+- Use `python main.py --verify-twitter` to test credentials
 
 ## Making Changes
 
