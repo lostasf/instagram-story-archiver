@@ -514,7 +514,7 @@ class StoryArchiver:
         Logic:
         1. Get current date in GMT+7 timezone
         2. Find stories with empty tweet_ids AND uploadTime < today (before today)
-        3. Post those stories to Twitter
+        3. Post those stories to Twitter (one tweet per story, multi-media batching within story)
         4. After posting, update metadata and delete media files
         5. Log stories uploaded on the same day as planned for next day
         """
@@ -587,6 +587,211 @@ class StoryArchiver:
                     total_posted += 1
                 else:
                     logger.error(f"Failed to post story {story_id} for {username}")
+
+        logger.info(f"Total stories posted: {total_posted}")
+        return total_posted
+
+    def post_pending_stories_daily(self) -> int:
+        """Post pending stories grouped by day to avoid spamming.
+
+        Logic:
+        1. Get yesterday's date in GMT+7 timezone
+        2. Find stories with empty tweet_ids AND uploadTime on yesterday
+        3. Group stories by their upload date
+        4. For each day's stories, combine all media into batches of 4
+        5. Post each batch as a tweet in a thread (one thread per day)
+        6. Mark all stories as posted
+        """
+        total_posted = 0
+
+        now = datetime.now(timezone(timedelta(hours=7)))
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = today_start - timedelta(days=1)
+        logger.info(f"Checking for pending stories from yesterday ({yesterday_start.strftime('%Y-%m-%d')})")
+
+        for username in self.config.INSTAGRAM_USERNAMES:
+            username = username.strip().lstrip('@')
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+
+            # Find unposted stories uploaded yesterday
+            stories_yesterday = []
+            for story in stories:
+                if not story.get('tweet_ids'):
+                    uploadTime = story.get('uploadTime') or story.get('taken_at')
+                    if uploadTime is None:
+                        logger.warning(f"Story {story.get('story_id')} has no uploadTime/taken_at, skipping")
+                        continue
+
+                    try:
+                        uploadTime_int = int(uploadTime)
+                        upload_datetime = datetime.fromtimestamp(uploadTime_int, tz=timezone(timedelta(hours=7)))
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Invalid uploadTime for story {story.get('story_id')}: {e}, skipping")
+                        continue
+
+                    # Check if story was uploaded yesterday
+                    if yesterday_start <= upload_datetime < today_start:
+                        stories_yesterday.append(story)
+
+            if not stories_yesterday:
+                logger.info(f"No stories from yesterday for {username}")
+                continue
+
+            # Group stories by upload date
+            stories_by_date = {}
+            for story in stories_yesterday:
+                uploadTime = int(story.get('uploadTime') or story.get('taken_at', 0))
+                upload_datetime = datetime.fromtimestamp(uploadTime, tz=timezone(timedelta(hours=7)))
+                date_key = upload_datetime.strftime('%Y-%m-%d')
+                stories_by_date.setdefault(date_key, []).append(story)
+
+            logger.info(f"Found {len(stories_yesterday)} stories from yesterday for {username}, grouped into {len(stories_by_date)} day(s)")
+
+            # Process each day's stories
+            for date_key, day_stories in sorted(stories_by_date.items()):
+                logger.info(f"Processing stories for {username} from {date_key}: {len(day_stories)} stories")
+
+                # Sort stories by uploadTime (oldest first)
+                day_stories.sort(key=lambda x: int(x.get('uploadTime', 0) or 0))
+
+                # Ensure anchor tweet
+                anchor_id = self._ensure_anchor_tweet(username)
+                if not anchor_id:
+                    logger.error(f"Cannot process day {date_key} for {username} without anchor tweet")
+                    continue
+
+                # Collect all media paths from all stories
+                all_media_paths = []
+                all_media_types = []
+                all_story_ids = []
+
+                for story in day_stories:
+                    story_id = str(story.get('story_id'))
+                    all_story_ids.append(story_id)
+
+                    # Get or prepare media for this story
+                    stored_media_paths = story.get('local_media_paths')
+                    stored_media_types = story.get('media_types')
+
+                    if not isinstance(stored_media_paths, list):
+                        stored_media_paths = []
+                    if not isinstance(stored_media_types, list):
+                        stored_media_types = []
+
+                    # Backward compatibility
+                    if not stored_media_paths:
+                        legacy_path = story.get('local_media_path')
+                        legacy_type = story.get('media_type', 'image')
+                        if legacy_path:
+                            stored_media_paths = [legacy_path]
+                            stored_media_types = [legacy_type]
+
+                    media_urls = story.get('media_urls') or []
+
+                    if media_urls:
+                        # Use URLs as source of truth
+                        for idx, url in enumerate(media_urls):
+                            media_type = (
+                                stored_media_types[idx]
+                                if idx < len(stored_media_types) and stored_media_types[idx]
+                                else ('video' if 'video' in str(url).lower() else 'image')
+                            )
+
+                            existing_path = stored_media_paths[idx] if idx < len(stored_media_paths) else None
+                            if existing_path and os.path.exists(existing_path):
+                                media_path = existing_path
+                            else:
+                                media_id = f"{username}_{story_id}_{idx}"
+                                media_path = self.media_manager.get_cached_media_path(media_id, media_type)
+                                if not media_path:
+                                    media_path = self.media_manager.download_media(url, media_id, media_type)
+
+                            if media_path:
+                                if media_type == 'image' and not media_path.endswith('_compressed.jpg'):
+                                    media_path = self.media_manager.compress_image(media_path)
+                                all_media_paths.append(media_path)
+                                all_media_types.append(media_type)
+                    else:
+                        # Use existing paths
+                        for path in stored_media_paths:
+                            if path and os.path.exists(path):
+                                all_media_paths.append(path)
+                            if stored_media_types:
+                                all_media_types.append(stored_media_types[0])
+                            else:
+                                all_media_types.append('image')
+
+                if not all_media_paths:
+                    logger.warning(f"No media available for day {date_key} for {username}")
+                    continue
+
+                logger.info(f"Collected {len(all_media_paths)} media items for day {date_key}")
+
+                # Get caption for the first story (they're all from the same day)
+                first_story = day_stories[0]
+                taken_at = int(first_story.get('uploadTime') or first_story.get('taken_at', 0))
+                caption = self.config.get_story_caption(username, taken_at)
+
+                # Post media in batches of 4
+                media_batches = [all_media_paths[i:i + 4] for i in range(0, len(all_media_paths), 4)]
+                tweet_ids = []
+                last_tweet_id = self.archive_manager.get_last_tweet_id(username) or anchor_id
+
+                for idx, batch_paths in enumerate(media_batches):
+                    # Upload all media in batch
+                    media_ids = []
+                    for path in batch_paths:
+                        media_id = self.twitter_api.upload_media(path)
+                        if media_id:
+                            media_ids.append(media_id)
+
+                    if not media_ids:
+                        logger.error(f"Failed to upload media batch {idx + 1} for day {date_key}")
+                        continue
+
+                    # Add batch info to caption if there are multiple batches
+                    if len(media_batches) > 1:
+                        tweet_text = f"{caption}\n({idx + 1}/{len(media_batches)})"
+                    else:
+                        tweet_text = caption
+
+                    tweet_id = self.twitter_api.post_tweet(
+                        text=tweet_text,
+                        media_ids=media_ids,
+                        reply_to_id=last_tweet_id,
+                    )
+
+                    if not tweet_id:
+                        logger.error(f"Failed to post tweet for batch {idx + 1} of day {date_key}")
+                        break
+
+                    tweet_ids.append(tweet_id)
+                    last_tweet_id = tweet_id
+                    logger.info(f"Posted tweet {idx + 1}/{len(media_batches)} for day {date_key}")
+
+                if not tweet_ids:
+                    logger.error(f"Failed to post any tweets for day {date_key} for {username}")
+                    continue
+
+                # Mark all stories as posted
+                for story_id in all_story_ids:
+                    self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
+
+                # Update last tweet ID
+                self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
+
+                # Cleanup media files after successful posting
+                for media_path in all_media_paths:
+                    if media_path and os.path.exists(media_path):
+                        self.media_manager.cleanup_media(media_path)
+
+                # Clear local paths in archive
+                for story_id in all_story_ids:
+                    self.archive_manager.update_story_local_paths(username, story_id, [])
+
+                logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
+                total_posted += len(all_story_ids)
 
         logger.info(f"Total stories posted: {total_posted}")
         return total_posted
