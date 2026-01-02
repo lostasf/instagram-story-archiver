@@ -12,6 +12,7 @@ Technical documentation for developers working on this codebase.
 - `--status`: Show archive statistics
 - `--story-id`: Archive a specific story
 - `--username`: Specify Instagram username for --story-id
+- `--verify-twitter`: Verify Twitter API credentials and permissions
 
 **Config** (config.py) - Loads configuration from environment variables
 - Validates required API keys
@@ -179,6 +180,7 @@ If story has 5 media items:
 | `--status` | Show archive statistics | Monitoring |
 | `--story-id` | Archive specific story | Testing/debugging |
 | `--username` | Specify Instagram username | With --story-id |
+| `--verify-twitter` | Verify Twitter API credentials | Troubleshooting |
 | `--post` | Post all pending stories | Legacy (not used in workflows) |
 | `--archive-only` | Same as --fetch-only | Alias |
 
@@ -226,6 +228,16 @@ python diagnose_twitter_oauth.py
 - Twitter API v2 tweet posting
 - Twitter API v1.1 media upload
 - OAuth permissions
+
+**--verify-twitter flag**: Quick credential verification
+```bash
+python main.py --verify-twitter
+```
+Checks:
+- Twitter API v2 authentication
+- Twitter API v1.1 authentication
+- Read permissions
+- Write permissions (via error handling)
 
 ## Common Modifications
 

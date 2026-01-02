@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--post-daily', action='store_true', help='Post stories from yesterday grouped by day')
     parser.add_argument('--fetch-only', action='store_true', help='Only fetch and archive, do not post')
     parser.add_argument('--archive-only', action='store_true', help='Archive stories without posting (for testing)')
+    parser.add_argument('--verify-twitter', action='store_true', help='Verify Twitter API credentials and permissions')
 
     args = parser.parse_args()
 
@@ -58,6 +59,16 @@ def main():
         sys.exit(1)
 
     archiver = StoryArchiver(config)
+
+    if args.verify_twitter:
+        logger.info("Verifying Twitter API credentials...")
+        if archiver.twitter.verify_credentials():
+            logger.info("✓ Twitter API credentials are valid")
+            logger.info("✓ Your Twitter app has the correct permissions")
+            sys.exit(0)
+        else:
+            logger.error("✗ Twitter API verification failed")
+            sys.exit(1)
 
     if args.status:
         archiver.print_status()

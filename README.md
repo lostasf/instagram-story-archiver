@@ -290,7 +290,11 @@ The archiver is resilient to errors:
 2. Select your app → **App permissions** → Set to **"Read and Write"**
 3. Go to **Keys and tokens** → **Regenerate** Access Token and Secret
 4. Update your `.env` file with new tokens
-5. Run `python diagnose_twitter_oauth.py` to verify
+5. Run `python main.py --verify-twitter` to verify
+
+**📖 Detailed Guide**: See [TWITTER_OAUTH_PERMISSIONS_FIX.md](TWITTER_OAUTH_PERMISSIONS_FIX.md) for complete step-by-step instructions.
+
+**⚠️ Critical**: After changing permissions, you MUST regenerate your Access Token and Secret. The old tokens won't work with new permissions!
 
 ### "Rate limit exceeded"
 
@@ -303,7 +307,7 @@ The archiver is resilient to errors:
 - Ensure images are under 5MB (auto-compressed)
 - Check Twitter API permissions include media upload (Read and Write)
 - Verify `TWITTER_BEARER_TOKEN` is correct
-- Use `python diagnose_twitter_oauth.py` to test permissions
+- Use `python main.py --verify-twitter` to test permissions
 
 ### "Story already archived"
 
@@ -329,8 +333,8 @@ The archiver is resilient to errors:
 # Test all configurations and API connections
 python test_setup.py
 
-# Diagnose Twitter OAuth permissions specifically
-python diagnose_twitter_oauth.py
+# Verify Twitter API credentials and permissions
+python main.py --verify-twitter
 ```
 
 ## Performance Notes
