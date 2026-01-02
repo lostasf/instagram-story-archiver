@@ -35,13 +35,13 @@ class TwitterAPI:
                 consumer_secret=config.TWITTER_API_SECRET,
                 access_token=config.TWITTER_ACCESS_TOKEN,
                 access_token_secret=config.TWITTER_ACCESS_SECRET,
-                wait_on_rate_limit=True
+                wait_on_rate_limit=False
             )
         elif has_bearer_token:
             logger.info("Initializing Twitter API v2 Client with Bearer Token")
             self.client = tweepy.Client(
                 bearer_token=config.TWITTER_BEARER_TOKEN,
-                wait_on_rate_limit=True
+                wait_on_rate_limit=False
             )
         else:
             logger.error("No valid Twitter credentials found!")
@@ -56,7 +56,7 @@ class TwitterAPI:
                     config.TWITTER_ACCESS_TOKEN,
                     config.TWITTER_ACCESS_SECRET
                 ),
-                wait_on_rate_limit=True
+                wait_on_rate_limit=False
             )
         else:
             logger.warning("Twitter API v1.1 Client NOT initialized (requires OAuth 1.0a)")
@@ -102,6 +102,7 @@ class TwitterAPI:
         except tweepy.Forbidden as e:
             error_msg = str(e)
             logger.error("Twitter API Permission Error (403 Forbidden)")
+            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
             logger.error("This typically means your Twitter app permissions are not configured correctly.")
             logger.error("")
             logger.error("TO FIX THIS ISSUE:")
@@ -120,6 +121,7 @@ class TwitterAPI:
 
         except tweepy.Unauthorized as e:
             logger.error("Twitter API Authentication Error (401 Unauthorized)")
+            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
             logger.error("Your API keys or access tokens are invalid or expired.")
             logger.error("")
             logger.error("TO FIX THIS ISSUE:")
@@ -164,6 +166,7 @@ class TwitterAPI:
                 except tweepy.Forbidden as upload_error:
                     error_msg = str(upload_error)
                     logger.error(f"Twitter API Permission Error (403 Forbidden) during media upload: {upload_error}")
+                    logger.error(f"Response: {upload_error.response.text if hasattr(upload_error, 'response') else 'N/A'}")
                     logger.error("")
                     logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
                     logger.error("")
@@ -228,6 +231,7 @@ class TwitterAPI:
         except tweepy.Forbidden as e:
             error_msg = str(e)
             logger.error(f"Twitter API Permission Error (403 Forbidden): {e}")
+            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
             logger.error("")
             logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
             logger.error("")
@@ -248,6 +252,7 @@ class TwitterAPI:
 
         except tweepy.Unauthorized as e:
             logger.error(f"Twitter API Authentication Error (401 Unauthorized): {e}")
+            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
             logger.error("Your access tokens may be invalid or expired.")
             logger.error("Try regenerating your Access Token and Secret in the Twitter Developer Portal.")
             return None
