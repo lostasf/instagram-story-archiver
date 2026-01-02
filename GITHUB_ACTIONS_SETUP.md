@@ -1,16 +1,29 @@
 # GitHub Actions Setup Guide
 
-This project is configured to run automatically every 8 hours using GitHub Actions.
+This project uses two GitHub Actions workflows for automated Instagram story archiving and posting.
 
 ## Overview
 
-Instead of running a local scheduler, the archiver is orchestrated by GitHub Actions:
+The archiver is orchestrated by two separate GitHub Actions workflows:
 
-- **Trigger**: Every 8 hours (cron: `0 */8 * * *`)
-- **Execution**: Ubuntu latest runner
+### Archive Workflow
+- **Schedule**: Every 8 hours (cron: `0 */8 * * *` UTC)
+- **Command**: `python main.py --fetch-only`
+- **Purpose**: Fetch and archive new stories from Instagram
 - **Runtime**: ~2-5 minutes per run
+- **Does NOT post** to Twitter
+
+### Post Workflow
+- **Schedule**: Daily at 00:00 UTC+7 (cron: `0 17 * * *` UTC)
+- **Command**: `python main.py --post-daily`
+- **Purpose**: Post yesterday's stories grouped by day
+- **Runtime**: ~3-7 minutes per run
+- **Posts** to Twitter with batched media
+
+### Execution Environment
+- **Runner**: Ubuntu latest
 - **Storage**: Archive and logs committed back to repository
-- **Cost**: Free for public repositories (1,000 minutes/month for private)
+- **Cost**: Free for public repositories (2,000 minutes/month for private)
 
 ## Setup Instructions
 
@@ -50,16 +63,25 @@ Go to **Settings → Actions → General**:
 
 ### 4. First Run
 
-The workflow will run automatically:
-- At the next top of the hour
-- When you manually trigger it via "Run workflow"
+The workflows will run automatically:
+- **Archive workflow**: At the next scheduled 8-hour mark
+- **Post workflow**: At 17:00 UTC (00:00 UTC+7)
+
+You can also manually trigger them via "Run workflow".
 
 ## Manual Triggers
 
-### Run Now
+### Run Archive Workflow
 
 1. Go to **Actions** tab
 2. Select "Archive Instagram Stories" workflow
+3. Click "Run workflow"
+4. Select branch and click "Run workflow"
+
+### Run Post Workflow
+
+1. Go to **Actions** tab
+2. Select "Post Instagram Stories" workflow
 3. Click "Run workflow"
 4. Select branch and click "Run workflow"
 
@@ -67,35 +89,67 @@ The workflow will run automatically:
 
 1. Go to **Actions** tab
 2. Click on the latest run
-3. Click "archive" job to see logs
+3. Click on the job to see detailed logs
 
 ## Workflow Details
 
-### Cron Expression
+### Cron Expressions
 
-```
-0 * * * *
-└─ runs at minute 0 of every hour
+**Archive workflow** (`archive-stories.yml`):
+```yaml
+cron: '0 */8 * * *'  # Every 8 hours
 ```
 
-To modify the schedule, edit `.github/workflows/archive-stories.yml`:
+**Post workflow** (`post-stories.yml`):
+```yaml
+cron: '0 17 * * *'  # Daily at 00:00 UTC+7 (17:00 UTC previous day)
+```
+
+### Modifying Schedules
+
+Edit the respective workflow file:
 
 ```yaml
 on:
   schedule:
-    - cron: '0 * * * *'  # Every hour
-    # Examples:
-    # - cron: '0 */2 * * *'  # Every 2 hours
-    # - cron: '0 0 * * *'    # Daily at midnight UTC
-    # - cron: '*/30 * * * *'  # Every 30 minutes
+    - cron: '0 */8 * * *'  # Change this cron expression
 ```
 
-### What the Workflow Does
+**Common examples**:
+- `0 * * * *` - Every hour
+- `0 */2 * * *` - Every 2 hours
+- `0 0 * * *` - Daily at midnight UTC
+- `0 17 * * *` - Daily at 17:00 UTC (00:00 UTC+7)
+- `*/30 * * * *` - Every 30 minutes
+
+**Important**: The post workflow schedule is relative to UTC. To run at 00:00 UTC+7, use `0 17 * * *` (17:00 UTC).
+
+Reference: https://crontab.guru
+
+### What the Archive Workflow Does
 
 1. **Checkout** - Clones the repository
 2. **Setup Python** - Installs Python 3.11
 3. **Install Dependencies** - Runs `pip install -r requirements.txt`
-4. **Archive Stories** - Runs `python main.py` with API credentials
+4. **Archive Stories** - Runs `python main.py --fetch-only`
+   - Fetches new stories from Instagram
+   - Downloads media to `media_cache/`
+   - Updates `archive.json` with story metadata
+   - Does NOT post to Twitter
+5. **Upload Logs** - Saves logs as artifacts (7-day retention)
+6. **Commit Changes** - Commits updated `archive.json` and `archiver.log`
+7. **Push** - Pushes changes back to repository
+
+### What the Post Workflow Does
+
+1. **Checkout** - Clones the repository
+2. **Setup Python** - Installs Python 3.11
+3. **Install Dependencies** - Runs `pip install -r requirements.txt`
+4. **Post Stories** - Runs `python main.py --post-daily`
+   - Groups yesterday's stories by day (UTC+7)
+   - Posts to Twitter with up to 4 media items per tweet
+   - Updates `archive.json` with `tweet_ids`
+   - Deletes media files from `media_cache/`
 5. **Upload Logs** - Saves logs as artifacts (7-day retention)
 6. **Commit Changes** - Commits updated `archive.json` and `archiver.log`
 7. **Push** - Pushes changes back to repository
@@ -188,55 +242,33 @@ ghi9012 Initial commit
 
 - **Cost**: Included in GitHub
 - **Minutes**: 2,000 free per month
-- **Calculation**: 24 hours × 30 days = 720 runs × 5 min = 3,600 minutes
-- **Note**: This exceeds free tier - consider adjusting schedule
+- **Calculation**:
+  - Archive workflow: ~5 min × 3 runs/day × 30 days = 450 min/month
+  - Post workflow: ~5 min × 1 run/day × 30 days = 150 min/month
+  - **Total**: ~600 min/month (well under 2,000 limit)
 
-**Options for private repos:**
+If you need to reduce usage:
 
-1. **Increase interval** to reduce runs:
-   ```yaml
-   cron: '0 */4 * * *'  # Every 4 hours = 180 runs/month = 900 minutes
-   ```
+1. **Increase archive interval**:
+    ```yaml
+    cron: '0 */12 * * *'  # Every 12 hours = 60 runs/month = 300 min
+    ```
 
-2. **Set limits** on story processing to reduce execution time
-
-3. **Upgrade plan** for more GitHub Actions minutes
+2. **Upgrade plan** for more GitHub Actions minutes
 
 ## Advanced Configuration
 
 ### Conditional Execution
 
-Only run if stories exist:
-
-Edit `.github/workflows/archive-stories.yml`:
-
-```yaml
-- name: Archive Instagram stories
-  env:
-    # ... environment variables
-  run: |
-    python main.py
-    EXIT_CODE=$?
-    if [ $EXIT_CODE -ne 0 ]; then
-      echo "Archive failed with exit code $EXIT_CODE"
-      exit $EXIT_CODE
-    fi
-```
-
-### Multiple Schedules
-
-Run at different times:
-
-```yaml
-on:
-  schedule:
-    - cron: '0 8 * * *'   # 8 AM UTC
-    - cron: '0 20 * * *'  # 8 PM UTC
-```
+Both workflows already have built-in conditional logic:
+- Archive workflow: Only processes new stories
+- Post workflow: Only posts stories from yesterday (UTC+7)
 
 ### Notifications
 
 Add Slack/Discord notifications on failure:
+
+Add to either workflow:
 
 ```yaml
 - name: Notify on failure
@@ -256,17 +288,8 @@ Periodically update Python packages:
 
 ```bash
 # Update requirements.txt
-pip install --upgrade requests tweepy pillow
+pip install --upgrade requests tweepy pillow python-dotenv
 pip freeze > requirements.txt
-```
-
-### Archive Cleanup
-
-Archive database grows over time:
-
-```bash
-# Manual cleanup (keep last 1000 stories)
-# This would be a separate workflow or local script
 ```
 
 ### Monitor Logs
@@ -278,7 +301,11 @@ Periodically review logs for errors:
 3. Download `archiver-logs` artifact
 4. Review `archiver.log`
 
-## Disabling Workflow
+### Archive Growth
+
+The `archive.json` file grows over time. GitHub has size limits for individual files, but JSON archives typically remain manageable for years of use.
+
+## Disabling Workflows
 
 ### Temporarily
 
@@ -289,17 +316,8 @@ Periodically review logs for errors:
 
 ### Permanently
 
-1. Delete `.github/workflows/archive-stories.yml`
+1. Delete `.github/workflows/archive-stories.yml` or `.github/workflows/post-stories.yml`
 2. Commit and push
-
-## Re-enabling Local Scheduling (Optional)
-
-If you want to switch back to local scheduling:
-
-1. Edit `main.py` to restore `ArchiverScheduler` class
-2. Re-add `schedule==1.2.0` to `requirements.txt`
-3. Run `python main.py` locally
-4. Disable GitHub Actions workflow
 
 ## Example Deployment
 
@@ -307,34 +325,34 @@ If you want to switch back to local scheduling:
 
 1. **Fork repository** on GitHub
 2. **Go to Settings → Secrets and variables → Actions**
-3. **Add all required secrets**
-4. **Wait for next hour** or manually trigger
+3. **Add all required secrets and variables**
+4. **Wait for next scheduled run** or manually trigger
 5. **Check Actions tab** for results
 
-### Results
+### Expected Results
 
-- Archive automatically updates every hour
-- Stories posted to Twitter in threads
-- `archive.json` tracks what's archived
-- `archiver.log` available in artifacts
+- **Archive workflow**: Runs every 8 hours, downloads new stories
+- **Post workflow**: Runs daily at 00:00 UTC+7, posts yesterday's stories
+- `archive.json` tracks all archived stories with timestamps
+- `archiver.log` available in artifacts (7-day retention)
 
 ## FAQ
 
 ### Q: How much does it cost?
 
-**A**: Free for public repos. Private repos get 2,000 free minutes/month (enough for ~40 runs at 5 min each, or daily runs).
+**A**: Free for public repos. Private repos get 2,000 free minutes/month (~600 min/month used, well under limit).
 
 ### Q: Can I change the schedule?
 
-**A**: Yes, edit `.github/workflows/archive-stories.yml` and change the cron expression.
+**A**: Yes, edit the respective workflow file and change the cron expression. Remember: post workflow is relative to UTC, so `0 17 * * *` = 00:00 UTC+7.
 
 ### Q: What if the workflow fails?
 
-**A**: GitHub sends notifications. Download logs from artifacts to debug.
+**A**: GitHub sends notifications. Download logs from artifacts to debug. Common issues: expired API keys, rate limits, network errors.
 
 ### Q: Can I manually trigger runs?
 
-**A**: Yes, use "Run workflow" in Actions tab anytime.
+**A**: Yes, use "Run workflow" in Actions tab anytime. Choose between Archive and Post workflows.
 
 ### Q: Will logs persist?
 
@@ -344,9 +362,20 @@ If you want to switch back to local scheduling:
 
 **A**: Free for public repos. Private repos get 2,000 free minutes/month.
 
-### Q: Can I run multiple workflows?
+### Q: Why two separate workflows?
 
-**A**: Yes, create more `.yml` files in `.github/workflows/` for other tasks.
+**A**: Separation provides better control:
+- Archive workflow runs frequently to catch new stories before they expire (24h on Instagram)
+- Post workflow runs once daily to post complete days in organized threads
+- Avoids rate limiting conflicts between fetching and posting
+
+### Q: What if I post stories manually?
+
+**A**: Manually posted stories will be tracked in `archive.json` with `tweet_ids`. The post workflow will skip stories that already have `tweet_ids`.
+
+### Q: Can I skip the post workflow?
+
+**A**: Yes, disable or delete `.github/workflows/post-stories.yml`. Stories will still be archived but won't be posted automatically.
 
 ### Q: What if credentials change?
 
@@ -357,6 +386,7 @@ If you want to switch back to local scheduling:
 - 📖 GitHub Actions Docs: https://docs.github.com/en/actions
 - 🐛 Debug failed runs: Check Actions → Run → Job logs
 - 💬 Cron syntax: https://crontab.guru
+- 📚 Full documentation: See [README.md](README.md)
 
 ---
 
