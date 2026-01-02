@@ -5,14 +5,15 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 ## ✨ Features
 
 - 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every 8 hours
-- 🐦 **Next-Day Twitter Threads**: Posts stories to Twitter at the start of the next day
+- 🐦 **Daily Twitter Posting**: Posts yesterday's stories at 00:00 UTC+7 grouped by day
 - 💾 **Archive Database**: Keeps track of all archived stories and local media
-- ⚙️ **Scheduled Logic**: Hits Instagram API every 8 hours, posts at 00:00 AM (start of next day)
+- ⚙️ **Two-Workflow System**: Separate workflows for archiving (`--fetch-only`) and posting (`--post-daily`)
 - 🖼️ **Media Optimization**: Automatically compresses images to meet Twitter size limits
 - 📝 **Customizable Captions**: Per-user caption templates (Gendis, Lana, etc.)
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
 - 🔄 **Auto-commit**: Archive updates tracked in git history
-- 🎬 **Multi-Media Support**: Handles Instagram stories with mixed images and videos (batches images, keeps videos in thread)
+- 🎬 **Multi-Media Support**: Handles Instagram stories with mixed images and videos (batches up to 4 items per tweet)
+- 📅 **Next-Day Posting**: Stories uploaded today are logged as "planned for next day" and posted at 00:00 UTC+7
 
 ## 🚀 Quick Start (GitHub Actions)
 
@@ -26,6 +27,7 @@ Go to **Settings → Secrets and variables → Actions** and add:
 
 **Secrets:**
 - `RAPIDAPI_KEY` - Your RapidAPI Instagram key
+- `RAPIDAPI_HOST` - `instagram120.p.rapidapi.com` (or your API host)
 - `TWITTER_API_KEY` - Twitter Consumer Key
 - `TWITTER_API_SECRET` - Twitter Consumer Secret
 - `TWITTER_ACCESS_TOKEN` - Twitter Access Token
@@ -39,9 +41,13 @@ Go to **Settings → Secrets and variables → Actions** and add:
 
 ### 3. Done! 🎉
 
-The workflow runs automatically every hour. Check the **Actions** tab to see runs.
+The workflows run automatically:
+- **Archive workflow**: Every 8 hours (fetches stories only)
+- **Post workflow**: Daily at 00:00 UTC+7 (posts yesterday's stories)
 
-For detailed setup, see [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
+Check the **Actions** tab to see runs.
+
+For detailed setup, see [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) or [QUICKSTART.md](QUICKSTART.md)
 
 ## 💻 Local Development
 
@@ -58,10 +64,16 @@ cp .env.example .env
 ### Usage
 
 ```bash
-# Run once (as GitHub Actions does)
+# Archive only (fetch stories, don't post)
+python main.py --fetch-only
+
+# Post yesterday's stories (grouped by day)
+python main.py --post-daily
+
+# Archive and post in one run
 python main.py
 
-# Archive specific story (defaults to primary configured account)
+# Archive specific story
 python main.py --story-id <story_id>
 
 # Archive specific story for a specific Instagram user
@@ -76,50 +88,82 @@ python test_setup.py
 
 ## How It Works
 
-### Story Fetching and Posting Flow
+### GitHub Actions Workflows
 
-1. **Check Instagram (Every 8 hours)**: API queries all configured Instagram accounts for new stories.
-2. **Download Media**: Images/videos from stories are downloaded and saved to a local cache.
-3. **Optimize**: Images are compressed to meet Twitter's 5MB limit.
-4. **Archive**: Story metadata and local file paths are stored in `archive.json`.
-5. **Post to Twitter (Start of Next Day)**: 
-   - When the script runs, it checks for archived stories that haven't been posted yet.
-   - If a story's timestamp is from a **previous day**, it is posted to its account's Twitter thread.
-   - Each story gets a customized caption based on the Instagram user.
-6. **Cleanup**: After successful posting, local media files are removed.
+This project uses **two separate GitHub Actions workflows** for optimal automation:
+
+#### 1. Archive Workflow (`archive-stories.yml`)
+- **Schedule**: Every 8 hours (cron: `0 */8 * * *` UTC)
+- **Command**: `python main.py --fetch-only`
+- **Purpose**: Fetch and archive new stories from Instagram
+- **Does NOT post** to Twitter
+
+#### 2. Post Workflow (`post-stories.yml`)
+- **Schedule**: Daily at 00:00 UTC+7 (cron: `0 17 * * *` UTC)
+- **Command**: `python main.py --post-daily`
+- **Purpose**: Post yesterday's stories grouped by day
+- **Posts** to Twitter with batched media (up to 4 items per tweet)
+
+### Story Processing Flow
+
+**Archiving Stage** (runs every 8 hours):
+1. **Check Instagram**: API queries all configured Instagram accounts for new stories
+2. **Download Media**: Images/videos from stories are downloaded and saved to `media_cache/`
+3. **Optimize**: Images are compressed to meet Twitter's 5MB limit
+4. **Archive**: Story metadata and local file paths are stored in `archive.json` with `uploadTime` field (from Instagram's `taken_at`)
+
+**Posting Stage** (runs daily at 00:00 UTC+7):
+1. **Check Eligible Stories**: Stories where `uploadTime < today` (UTC+7) and `tweet_ids` is empty
+2. **Group by Day**: All stories from the same day are grouped together
+3. **Batch Media**: Up to 4 media items (images or videos) per tweet to minimize tweets
+4. **Post to Thread**: Creates/replies to thread with progress indicators like `(1/2)`, `(2/2)`
+5. **Update Archive**: Saves `tweet_ids` to `archive.json`
+6. **Cleanup**: Deletes media files from `media_cache/` and clears `local_media_paths`
+
+**Key Logic**:
+- Stories uploaded **today** (UTC+7) are logged as "planned for next day" - not posted until tomorrow
+- Stories uploaded **yesterday** (UTC+7) are posted in batches when the workflow runs at 00:00 UTC+7
+- This ensures a complete day's stories are posted together in organized threads
 
 ### Thread Structure
 
 Each Instagram account gets its own thread:
-- **Anchor tweet**: One tweet per Instagram account (customizable)
-- **Story tweets**: Each story is posted as a reply in that account's thread, with the story timestamp and media
+- **Anchor tweet**: One tweet per Instagram account (customizable via `TWITTER_THREAD_CONFIG`)
+- **Story tweets**: All stories from the same day are posted as replies in that account's thread
+- **Media batching**: Up to 4 media items (images or videos) per tweet with progress indicators
+- **One thread per day**: All stories from the same day are grouped into a single thread
 
 ### Rate Limiting
 
 - **Instagram API**: 1000 requests/month (shared quota)
 - **Twitter API**: Subject to Twitter rate limits (media uploads typically allow 1500/15min)
-- **Check Interval**: Optimized to 8 hours (3 times per day) to conserve Instagram API quota
+- **Archive Workflow**: Runs every 8 hours (3 times per day) to conserve Instagram API quota
+- **Post Workflow**: Runs once daily at 00:00 UTC+7
 
 ## Project Structure
 
 ```
 .
-├── main.py                  # Entry point and scheduler
-├── config.py               # Configuration management
-├── story_archiver.py       # Main archiver logic
-├── instagram_api.py        # Instagram API wrapper
-├── twitter_api.py          # Twitter API wrapper
-├── media_manager.py        # Media download and compression
-├── archive_manager.py      # Archive database management
-├── test_setup.py           # Configuration and API verification
-├── diagnose_twitter_oauth.py # Twitter OAuth diagnostic tool
-├── requirements.txt        # Python dependencies
-├── .env.example            # Example configuration
-├── TWITTER_OAUTH_FIX.md    # Twitter OAuth permissions fix guide
-├── archive.json            # Archive database (auto-created)
-├── archiver.log            # Application logs
-├── test_media.jpg          # Test media for OAuth verification
-└── media_cache/            # Temporary media storage (auto-created)
+├── main.py                      # Entry point with CLI flags (--fetch-only, --post-daily, etc.)
+├── config.py                    # Configuration management
+├── story_archiver.py            # Main archiver logic
+├── instagram_api.py             # Instagram API wrapper
+├── twitter_api.py               # Twitter API wrapper
+├── media_manager.py             # Media download and compression
+├── archive_manager.py           # Archive database management
+├── test_setup.py                # Configuration and API verification
+├── diagnose_twitter_oauth.py    # Twitter OAuth diagnostic tool
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Example configuration
+├── TWITTER_OAUTH_FIX.md         # Twitter OAuth permissions fix guide
+├── DEVELOPER_NOTES.md           # Technical notes for developers
+├── archive.json                 # Archive database (auto-created)
+├── archiver.log                 # Application logs
+├── test_media.jpg               # Test media for OAuth verification
+├── media_cache/                 # Temporary media storage (auto-created)
+└── .github/workflows/
+    ├── archive-stories.yml      # Runs every 8 hours: python main.py --fetch-only
+    └── post-stories.yml         # Runs daily at 00:00 UTC+7: python main.py --post-daily
 ```
 
 ## Archive Database Format
@@ -155,6 +199,11 @@ Each Instagram account gets its own thread:
   }
 }
 ```
+
+**Important fields for posting logic:**
+- `taken_at`: Unix timestamp from Instagram API (stored as `uploadTime` internally)
+- `tweet_ids`: Empty array `[]` means story hasn't been posted yet
+- Stories are only posted if `taken_at < today` (UTC+7) and `tweet_ids` is empty
 
 ## Logging
 
@@ -243,18 +292,16 @@ The archiver is resilient to errors:
 4. Update your `.env` file with new tokens
 5. Run `python diagnose_twitter_oauth.py` to verify
 
-**Detailed instructions**: See [TWITTER_OAUTH_FIX.md](TWITTER_OAUTH_FIX.md)
-
 ### "Rate limit exceeded"
 
-- Increase `CHECK_INTERVAL_HOURS` to reduce API calls
+- Increase archive workflow interval (edit `.github/workflows/archive-stories.yml`)
 - Verify your RapidAPI subscription is active
 - Check remaining quota at https://rapidapi.com/dashboard
 
 ### "Failed to upload media"
 
 - Ensure images are under 5MB (auto-compressed)
-- Check Twitter API permissions include media upload
+- Check Twitter API permissions include media upload (Read and Write)
 - Verify `TWITTER_BEARER_TOKEN` is correct
 - Use `python diagnose_twitter_oauth.py` to test permissions
 
@@ -263,6 +310,12 @@ The archiver is resilient to errors:
 - Normal behavior - the archiver tracks processed stories
 - Check `archive.json` for details
 - Stories will only be processed once
+
+### "No stories to post"
+
+- Normal if all stories have already been posted
+- Check `archive.json` for `tweet_ids` (empty = not posted)
+- Check `taken_at` timestamps - stories from today (UTC+7) won't post until tomorrow
 
 ### Connection timeouts
 
@@ -299,6 +352,7 @@ python diagnose_twitter_oauth.py
 - [x] Support for multiple Instagram accounts
 - [x] Custom hashtag/caption templates
 - [x] Handle stories with 4+ media items (multi-media batching)
+- [x] Separate archive and post workflows
 - [ ] Story filtering (time-based, caption-based)
 - [ ] Web dashboard for status monitoring
 - [ ] Database backup and restoration

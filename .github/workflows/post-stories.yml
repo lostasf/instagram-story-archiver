@@ -2,7 +2,7 @@ name: Post Instagram Stories
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 17 * * *'  # Runs at 00:00 UTC+7 (17:00 UTC previous day)
   workflow_dispatch:
 
 jobs:

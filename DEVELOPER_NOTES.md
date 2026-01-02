@@ -1,248 +1,410 @@
-# Developer Notes - Multi-Media Story Support
+# Developer Notes
 
-## Quick Reference
+Technical documentation for developers working on this codebase.
 
-### Archive Data Structure
+## Architecture Overview
 
-**New format (supports multiple media):**
+### Core Components
+
+**main.py** - Entry point with CLI flags
+- `--fetch-only`: Archive stories only, don't post
+- `--post-daily`: Post yesterday's stories grouped by day
+- `--status`: Show archive statistics
+- `--story-id`: Archive a specific story
+- `--username`: Specify Instagram username for --story-id
+
+**Config** (config.py) - Loads configuration from environment variables
+- Validates required API keys
+- Manages Instagram usernames list
+- Handles thread configuration per account
+
+**StoryArchiver** (story_archiver.py) - Main orchestration
+- Coordinates InstagramAPI, MediaManager, ArchiveManager, TwitterAPI
+- Implements archive and posting logic
+- Handles multi-media batching and threading
+
+**InstagramAPI** (instagram_api.py) - Instagram API wrapper (via RapidAPI)
+- Fetches stories from accounts
+- Extracts media URLs and metadata
+- Returns story list with `taken_at` timestamp (key field)
+
+**MediaManager** (media_manager.py) - Media download and processing
+- Downloads media from URLs to `media_cache/`
+- Compresses images to under 5MB (Twitter limit)
+- Manages cache cleanup
+
+**ArchiveManager** (archive_manager.py) - JSON database
+- Reads/writes `archive.json`
+- Tracks stories with `taken_at` and `tweet_ids`
+- Provides statistics and history
+
+**TwitterAPI** (twitter_api.py) - Twitter API wrapper
+- Uploads media (v1.1)
+- Posts tweets (v2)
+- Creates threaded replies
+
+## Key Logic
+
+### Archive Flow (--fetch-only)
+
+1. Load `archive.json`
+2. For each Instagram account:
+   - Fetch stories from Instagram API
+   - For each story:
+     - Check if already archived (by story_id)
+     - Download all media items to `media_cache/`
+     - Compress images if needed
+     - Save to `archive.json` with `taken_at` timestamp
+     - Log as "planned for next day" if `taken_at` >= today (UTC+7)
+3. Commit `archive.json` to git
+
+### Post Flow (--post-daily)
+
+1. Load `archive.json`
+2. For each Instagram account:
+   - Find unposted stories: `tweet_ids` is empty AND `taken_at` < today (UTC+7)
+   - Group stories by day (using `taken_at` date in UTC+7)
+   - For each day:
+     - Create/reply to anchor tweet (customizable per account)
+     - Batch up to 4 media items per tweet
+     - Post tweets with progress indicators: `(1/2)`, `(2/2)`, etc.
+     - Update `archive.json` with `tweet_ids`
+3. Delete media files from `media_cache/` after successful posting
+4. Commit `archive.json` to git
+
+### Timezone Handling
+
+**Critical**: All posting logic uses UTC+7 timezone.
+
+- Instagram's `taken_at` is a Unix timestamp (UTC)
+- Convert to UTC+7 for "yesterday" check
+- `taken_at < today (UTC+7)` means story is eligible for posting
+- Stories uploaded today (UTC+7) are NOT posted until tomorrow
+
+Example:
+- Story uploaded at 2024-01-15 23:00 UTC = 2024-01-16 06:00 UTC+7
+- If today (UTC+7) is 2024-01-16, this story will NOT post (same day)
+- Will post tomorrow when today becomes 2024-01-17 (UTC+7)
+
+### Multi-Media Batching
+
+Twitter allows up to 4 media items per tweet (images or videos).
+
+**Archive stage**: Downloads ALL media items from a story, stores in `local_media_paths` array.
+
+**Post stage**:
 ```python
+# Group media into batches of up to 4
+batch_size = 4
+for i in range(0, len(media_paths), batch_size):
+    batch = media_paths[i:i + batch_size]
+    # Upload all media in batch
+    media_ids = [twitter_api.upload_media(path) for path in batch]
+    # Post tweet with all media
+    tweet_id = twitter_api.post_tweet(text, media_ids, reply_to_id)
+```
+
+If story has 5 media items:
+- Tweet 1: 4 items + caption + "(1/2)"
+- Tweet 2: 1 item + caption + "(2/2)"
+- Both tweets are in the same thread
+
+## Archive Database Schema
+
+`archive.json` structure:
+
+```json
 {
-    'story_id': '123456789',
-    'media_count': 5,
-    'media_urls': ['url1', 'url2', 'url3', 'url4', 'url5'],
-    'local_media_paths': ['/path/1.jpg', '/path/2.jpg', '/path/3.jpg', '/path/4.jpg', '/path/5.jpg'],
-    'media_types': ['image', 'image', 'image', 'image', 'image'],
-    'tweet_ids': ['tweet1', 'tweet2'],
-    'taken_at': 1234567890,
-    # Legacy fields (maintained for backward compatibility)
-    'local_media_path': '/path/1.jpg',
-    'media_type': 'image'
+  "schema_version": 2,
+  "accounts": {
+    "username": {
+      "anchor_tweet_id": "1234567890",
+      "last_tweet_id": "1234567899",
+      "last_check": "2024-01-15T10:30:00.123456",
+      "archived_stories": [
+        {
+          "story_id": "2921414441985452983",
+          "instagram_username": "jkt48.gendis",
+          "archived_at": "2024-01-15T10:30:00.123456",
+          "uploadTime": 1705305600,  // Unix timestamp (UTC) - same as taken_at
+          "media_count": 3,
+          "media_urls": ["url1", "url2", "url3"],
+          "local_media_path": "path1.jpg",  // Legacy field (single path)
+          "media_type": "image",  // Legacy field (single type)
+          "local_media_paths": ["path1.jpg", "path2.jpg", "path3.jpg"],  // Array (preferred)
+          "media_types": ["image", "image", "video"],  // Array (preferred)
+          "tweet_ids": ["1234567899"]  // Empty if not posted
+        }
+      ]
+    }
+  }
 }
 ```
 
-### Key Code Sections
+**Key fields**:
+- `uploadTime` (or `taken_at`): Unix timestamp from Instagram API (UTC) - used for "next day" posting logic
+- `tweet_ids`: Array of tweet IDs (empty = not posted yet)
+- `local_media_paths`: Array of downloaded media file paths (preferred over legacy `local_media_path`)
+- `media_types`: Array of media types ("image" or "video") (preferred over legacy `media_type`)
 
-#### Downloading All Media (story_archiver.py)
-```python
-# Download and prepare ALL media items
-local_media_paths = []
-media_types = []
+## GitHub Actions Integration
 
-for idx, media in enumerate(media_list):
-    media_path = self.media_manager.download_media(
-        media['url'],
-        f"{username}_{story_id}_{idx}",
-        media['type'],
-    )
-    if not media_path:
-        logger.warning(f"Failed to download media {idx}, continuing...")
-        continue
+### Two Workflows
 
-    if media['type'] == 'image':
-        media_path = self.media_manager.compress_image(media_path)
-    
-    local_media_paths.append(media_path)
-    media_types.append(media['type'])
-```
+**archive-stories.yml**:
+- Schedule: Every 8 hours (`0 */8 * * *` UTC)
+- Command: `python main.py --fetch-only`
+- Purpose: Fetch and archive new stories
+- Commits: `archive.json` and `archiver.log`
 
-#### Posting with Batching (story_archiver.py)
-```python
-# Post all media as a thread
-# Twitter allows up to 4 images per tweet or 1 video per tweet
-tweet_ids = []
+**post-stories.yml**:
+- Schedule: Daily at 00:00 UTC+7 (`0 17 * * *` UTC)
+- Command: `python main.py --post-daily`
+- Purpose: Post yesterday's stories
+- Commits: `archive.json` (with tweet_ids) and `archiver.log`
 
-# Check if we have videos (videos must be posted one per tweet)
-has_video = any(t == 'video' for t in media_types if t)
+### Why Separate?
 
-if has_video:
-    # Post each media item separately
-    for idx, media_path in enumerate(media_paths):
-        media_id = self.twitter_api.upload_media(media_path)
-        tweet_text = caption if idx == 0 else f"{caption}\n({idx + 1}/{len(media_paths)})"
-        tweet_id = self.twitter_api.post_tweet(
-            text=tweet_text,
-            media_ids=[media_id],
-            reply_to_id=last_tweet_id,
-        )
-        tweet_ids.append(tweet_id)
-        last_tweet_id = tweet_id
-else:
-    # All images - batch up to 4 per tweet
-    batch_size = 4
-    for batch_idx in range(0, len(media_paths), batch_size):
-        batch_paths = media_paths[batch_idx:batch_idx + batch_size]
-        media_ids = [self.twitter_api.upload_media(p) for p in batch_paths]
-        
-        if len(media_paths) > batch_size:
-            batch_num = batch_idx // batch_size + 1
-            total_batches = (len(media_paths) + batch_size - 1) // batch_size
-            tweet_text = f"{caption}\n({batch_num}/{total_batches})"
-        else:
-            tweet_text = caption
-        
-        tweet_id = self.twitter_api.post_tweet(
-            text=tweet_text,
-            media_ids=media_ids,
-            reply_to_id=last_tweet_id,
-        )
-        tweet_ids.append(tweet_id)
-        last_tweet_id = tweet_id
-```
+1. **Frequency**: Archive runs every 8h to catch stories before they expire (24h on Instagram)
+2. **Organization**: Post runs once daily to post complete days together
+3. **Reliability**: Separation avoids rate limiting conflicts
+4. **Control**: Can manually trigger archive or post independently
 
-### Twitter Limits
+## CLI Flags Reference
 
-| Media Type | Max Per Tweet | Notes |
-|------------|---------------|-------|
-| Images | 4 | Can be batched together |
-| Videos | 1 | Must be separate tweets |
-| GIFs | 1 | Treated as video |
-| Image size | 5 MB | Auto-compressed by media_manager |
-| Video size | 512 MB | Not compressed (future enhancement) |
+| Flag | Purpose | Use Case |
+|------|---------|-----------|
+| `--fetch-only` | Archive only, no posting | Archive workflow |
+| `--post-daily` | Post yesterday's stories grouped by day | Post workflow |
+| `--status` | Show archive statistics | Monitoring |
+| `--story-id` | Archive specific story | Testing/debugging |
+| `--username` | Specify Instagram username | With --story-id |
+| `--post` | Post all pending stories | Legacy (not used in workflows) |
+| `--archive-only` | Same as --fetch-only | Alias |
 
-### Batch Calculation
+## Error Handling
+
+All components use try-except with logging:
 
 ```python
-# Calculate number of tweets needed for N images
-def calculate_tweet_count(num_images, batch_size=4):
-    return (num_images + batch_size - 1) // batch_size
-
-# Examples:
-calculate_tweet_count(1)  # 1 tweet
-calculate_tweet_count(4)  # 1 tweet
-calculate_tweet_count(5)  # 2 tweets
-calculate_tweet_count(8)  # 2 tweets
-calculate_tweet_count(9)  # 3 tweets
+try:
+    result = some_operation()
+    logger.info(f"Success: {result}")
+except Exception as e:
+    logger.error(f"Operation failed: {e}")
+    # Continue processing if possible
 ```
 
-### Testing Scenarios
+**Graceful degradation**:
+- If one media download fails, continue with others
+- If one story fails, continue with next story
+- If one account fails, continue with next account
+- Only fail entire run if critical error (config, API auth)
 
-1. **Single Image Story**
-   - Expected: 1 tweet, no progress indicator
-   
-2. **Four Images Story**
-   - Expected: 1 tweet with 4 images, no progress indicator
-   
-3. **Five Images Story**
-   - Expected: 2 tweets
-   - Tweet 1: 4 images + "(1/2)"
-   - Tweet 2: 1 image + "(2/2)"
-   
-4. **Eight Images Story**
-   - Expected: 2 tweets
-   - Tweet 1: 4 images + "(1/2)"
-   - Tweet 2: 4 images + "(2/2)"
-   
-5. **Three Videos Story**
-   - Expected: 3 tweets
-   - Tweet 1: 1 video + "(1/3)"
-   - Tweet 2: 1 video + "(2/3)"
-   - Tweet 3: 1 video + "(3/3)"
+## Testing
 
-### Common Pitfalls
+### Unit Tests
 
-❌ **Don't**: Batch videos with images
+No formal unit tests yet. Use manual testing:
+
+```bash
+# Test configuration and API connections
+python test_setup.py
+
+# Test Twitter OAuth specifically
+python diagnose_twitter_oauth.py
+```
+
+### Test Scripts
+
+**test_setup.py**: Verifies
+- Configuration loading
+- Instagram API connectivity
+- Twitter API authentication
+
+**diagnose_twitter_oauth.py**: Tests
+- Twitter API v2 tweet posting
+- Twitter API v1.1 media upload
+- OAuth permissions
+
+## Common Modifications
+
+### Change Posting Time
+
+Edit `.github/workflows/post-stories.yml`:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 17 * * *'  # 00:00 UTC+7 = 17:00 UTC
+```
+
+To change to 09:00 UTC+7:
+```yaml
+cron: '0 2 * * *'  # 09:00 UTC+7 = 02:00 UTC
+```
+
+### Change Archive Frequency
+
+Edit `.github/workflows/archive-stories.yml`:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 */8 * * *'  # Every 8 hours
+```
+
+To change to every 6 hours:
+```yaml
+cron: '0 */6 * * *'  # Every 6 hours
+```
+
+### Change Media Batch Size
+
+Edit `story_archiver.py`, find `post_pending_stories_daily()` method:
+
 ```python
-# Wrong - Twitter doesn't support this
-media_ids = [image_id, video_id, image_id]
+batch_size = 4  # Change this value
 ```
 
-✅ **Do**: Handle them separately
+Note: Twitter's limit is 4, so don't increase above 4.
+
+### Add Custom Caption Template
+
+Edit `config.py`, find `get_story_caption()` method:
+
 ```python
-# Correct
-if has_video:
-    # Post each media individually
+def get_story_caption(self, username: str, upload_time: datetime) -> str:
+    date_str = upload_time.strftime('%d/%m/%Y')
+
+    if 'gendis' in username.lower():
+        return f"Instagram Story @Gendis_JKT48\n{date_str}\n\n#Mantrajiva"
+
+    if 'lana' in username.lower():
+        return f"Instagram Story @Lana_JKT48\n{date_str}\n\n#LanaJKT48"
+
+    return f"Instagram Story @{username}\n{date_str}"
 ```
 
-❌ **Don't**: Exceed 4 images per tweet
+## Performance Considerations
+
+**Memory**: ~100-200MB for typical operations
+**Disk**: ~50-100MB/month for media cache (auto-cleaned after posting)
+**Network**: ~1-2 minutes per story depending on media size
+**API Calls**: ~10-15 per story (check + fetch + media download + upload + post)
+
+## Rate Limits
+
+| Service | Limit | Impact |
+|---------|-------|--------|
+| Instagram API | 1000/month | ~3 requests/day at 8h interval = ~90/month |
+| Twitter Media Upload | 1500/15min | ~5-10 uploads per run (well under limit) |
+| Twitter Post Tweet | ~300/15min | ~5-10 posts per run (well under limit) |
+
+## Debugging Tips
+
+### Enable Debug Logging
+
+Edit `main.py`:
+
 ```python
-# Wrong - Twitter limit is 4
-media_ids = [img1, img2, img3, img4, img5]
+logging.basicConfig(
+    level=logging.DEBUG,  # Change from INFO to DEBUG
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[...],
+)
 ```
 
-✅ **Do**: Batch in groups of 4
-```python
-# Correct
-for batch in batches_of_4(media_ids):
-    post_tweet(media_ids=batch)
+### Check Archive State
+
+```bash
+# View archive as JSON
+python -m json.tool archive.json
+
+# Check specific account
+python -c "import json; print(json.dumps(json.load(open('archive.json'))['accounts']['jkt48.gendis'], indent=2))"
+
+# Count unposted stories
+python -c "import json; data=json.load(open('archive.json')); print(sum(1 for s in data['accounts']['jkt48.gendis']['archived_stories'] if not s['tweet_ids']))"
 ```
 
-### Debugging Tips
+### Test Without Posting
 
-1. **Check media_list length**
-   ```python
-   logger.info(f"Found {len(media_list)} media items")
+```bash
+# Archive only (no posting)
+python main.py --fetch-only
+
+# Check what would be posted
+python main.py --status
+```
+
+## Adding Features
+
+### Add New Instagram Account
+
+1. Add to environment variables:
+   ```bash
+   INSTAGRAM_USERNAMES=jkt48.gendis,jkt48.lana.a,new_account
    ```
 
-2. **Verify all downloads succeeded**
+2. Add caption template in `config.py`:
    ```python
-   logger.info(f"Downloaded {len(local_media_paths)} of {len(media_list)} items")
+   if 'new_account' in username.lower():
+       return f"Custom caption for {username}\n{date_str}"
    ```
 
-3. **Monitor tweet creation**
-   ```python
-   logger.info(f"Posted {len(tweet_ids)} tweets for story {story_id}")
+3. Add thread config (optional):
+   ```bash
+   TWITTER_THREAD_CONFIG={"new_account": {"anchor": "Custom anchor text"}}
    ```
 
-4. **Check archive data**
-   ```python
-   stats = archive_manager.get_statistics(username)
-   story = next(s for s in stats['stories'] if s['story_id'] == story_id)
-   logger.info(f"Archive has {len(story['local_media_paths'])} paths")
-   ```
+### Add New Twitter Account
 
-### Performance Considerations
+Not supported. Each repository uses a single Twitter account.
 
-- **Download time**: ~2-5 seconds per media item
-- **Upload time**: ~3-7 seconds per media item  
-- **Total time for 5 images**: ~40-60 seconds
-- **Rate limits**: 1500 media uploads per 15 minutes (plenty of headroom)
+## Dependencies
 
-### Future Enhancement Ideas
+**requests**: HTTP client for API calls
+**tweepy**: Twitter API wrapper
+**pillow**: Image processing and compression
+**python-dotenv**: Environment variable loading from .env
 
-1. **Parallel downloads**: Use `asyncio` or `threading`
-2. **Smart grouping**: Group related images in same tweet
-3. **Video optimization**: Compress large videos
-4. **Resume on failure**: Save progress and resume
-5. **Carousel mode**: Single tweet with carousel for related images
-6. **Configurable batch size**: Allow users to set batch size < 4
+All pinned in `requirements.txt`.
 
-### Migration Notes
+## Security Notes
 
-**No migration needed** - the code handles both formats:
+- Never commit `.env` file (contains secrets)
+- Use GitHub Secrets for API credentials in Actions
+- Rotate API keys periodically
+- Logs may contain URLs (media URLs are public anyway)
 
-```python
-# Handles new format
-media_paths = story_entry.get('local_media_paths', [])
+## For AI Agents
 
-# Falls back to legacy format if new format not present
-if not media_paths:
-    legacy_path = story_entry.get('local_media_path')
-    if legacy_path:
-        media_paths = [legacy_path]
-```
+### Understanding the Codebase
 
-### API Quota Impact
+1. **Start with main.py** - See CLI flags and flow
+2. **Read story_archiver.py** - Core orchestration logic
+3. **Check archive.json** - Understand data structure
+4. **Review GitHub Actions** - See automation setup
 
-- **Instagram API**: No change (same API call returns all media)
-- **Twitter Media Upload**: Increases proportionally to media count
-  - 1 media → 1 upload call
-  - 5 media → 5 upload calls
-- **Twitter Post Tweet**: Increases based on batching
-  - 1-4 images → 1 tweet call
-  - 5-8 images → 2 tweet calls
+### Making Changes
 
-### Error Recovery
+1. **Test locally** with `python main.py --fetch-only` first
+2. **Check archive.json** to verify changes
+3. **Test posting** with `python main.py --post-daily`
+4. **Update docs** (README.md, QUICKSTART.md) if changing behavior
 
-The implementation is resilient to partial failures:
+### Common Tasks
 
-```python
-# If media download fails, continue with others
-if not media_path:
-    logger.warning(f"Failed to download media {idx}, continuing...")
-    continue  # Don't fail entire story
+- **Add feature**: Add to story_archiver.py, expose via CLI flag
+- **Fix bug**: Check logs, add error handling, test with test_setup.py
+- **Update API**: Update respective API wrapper (instagram_api.py or twitter_api.py)
+- **Change schedule**: Edit workflow YAML files
 
-# Only fail if ALL media downloads failed
-if not local_media_paths:
-    logger.error(f"Failed to download any media")
-    return False
-```
+### Key Files to Know
+
+- `main.py` - Entry point, CLI interface
+- `story_archiver.py` - Core logic (most important)
+- `archive_manager.py` - Database operations
+- `config.py` - Configuration loading
+- `.github/workflows/*.yml` - Automation
