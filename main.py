@@ -62,7 +62,7 @@ def main():
 
     if args.verify_twitter:
         logger.info("Verifying Twitter API credentials...")
-        if archiver.twitter.verify_credentials():
+        if archiver.twitter_api.verify_credentials():
             logger.info("✓ Twitter API credentials are valid")
             logger.info("✓ Your Twitter app has the correct permissions")
             sys.exit(0)
