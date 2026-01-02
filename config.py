@@ -99,7 +99,7 @@ class Config:
 
         # Specific requirements for Gendis and Lana
         if 'gendis' in username.lower():
-            return f"Instagram Story @Gendis_JKT48\n{date_str}\n\n#Mantrajiva"
+            return f"Instagram Story Gendis\n{date_str}\n\n#Mantrajiva"
         
         if 'lana' in username.lower():
             # Matches 'lana' or 'jkt48.lana.a'

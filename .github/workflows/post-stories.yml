@@ -1,12 +1,12 @@
-name: Archive Instagram Stories
+name: Post Instagram Stories
 
 on:
   schedule:
-    - cron: '0 */8 * * *'
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
-  archive:
+  post:
     runs-on: ubuntu-latest
 
     permissions:
@@ -29,7 +29,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Archive Instagram stories (fetch only)
+      - name: Post stories from yesterday
         env:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
@@ -44,7 +44,7 @@ jobs:
           TWITTER_THREAD_CONFIG: ${{ vars.TWITTER_THREAD_CONFIG }}
           ARCHIVE_DB_PATH: ./archive.json
           MEDIA_CACHE_DIR: ./media_cache
-        run: python main.py --fetch-only
+        run: python main.py --post-daily
 
       - name: Upload logs
         if: always()
@@ -66,7 +66,7 @@ jobs:
             git add media_cache/
           fi
           # Check if there are changes (including new files)
-          git diff --quiet && git diff --cached --quiet || git commit -m "chore: update archive, logs and media cache [skip ci]"
+          git diff --quiet && git diff --cached --quiet || git commit -m "chore: update archive and logs after posting [skip ci]"
 
       - name: Push changes
         if: success()
