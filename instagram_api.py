@@ -8,8 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class InstagramAPI:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, discord_notifier=None):
         self.config = config
+        self.discord = discord_notifier
         self.base_url = "https://instagram120.p.rapidapi.com"
         self.headers = {
             'x-rapidapi-key': config.RAPIDAPI_KEY,
@@ -80,6 +81,10 @@ class InstagramAPI:
             stories = self._parse_story_items(story_data)
             logger.info(f"Found {len(stories)} active stories for {username}")
             
+            # Notify Discord about successful fetch
+            if self.discord:
+                self.discord.notify_instagram_fetch_success(username, len(stories))
+            
             # Debug: Log details about each story found
             for i, story in enumerate(stories):
                 story_id = story.get('pk') or story.get('id')
@@ -89,7 +94,24 @@ class InstagramAPI:
             return stories
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching user stories: {e}")
+            error_msg = f"Error fetching user stories: {e}"
+            logger.error(error_msg)
+            
+            # Notify Discord about Instagram API failure
+            if self.discord:
+                response_text = None
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        response_text = e.response.text[:1000]
+                    except:
+                        response_text = str(e.response)[:1000]
+                
+                self.discord.notify_instagram_fetch_error(
+                    username=username,
+                    error=str(e),
+                    response_data=response_text
+                )
+            
             return None
     
     def get_story_by_id(self, username: str, story_id: str) -> Optional[Dict]:

@@ -9,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class TwitterAPI:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, discord_notifier=None):
         self.config = config
+        self.discord = discord_notifier
         
         # Log which credentials are available (without showing values)
         has_api_key = bool(config.TWITTER_API_KEY)
@@ -230,8 +231,10 @@ class TwitterAPI:
 
         except tweepy.Forbidden as e:
             error_msg = str(e)
+            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
+            
             logger.error(f"Twitter API Permission Error (403 Forbidden): {e}")
-            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+            logger.error(f"Response: {response_text}")
             logger.error("")
             logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
             logger.error("")
@@ -248,6 +251,16 @@ class TwitterAPI:
             logger.error("")
             logger.error("⚠️  THE OLD TOKENS WON'T WORK WITH NEW PERMISSIONS!")
             logger.error("⚠️  YOU MUST REGENERATE THEM AFTER CHANGING PERMISSIONS!")
+            
+            # Notify Discord about Twitter 403 error
+            if self.discord:
+                self.discord.notify_twitter_post_error(
+                    username="Unknown",  # Will be updated by caller
+                    error=f"Twitter API Permission Error (403 Forbidden): {e}",
+                    status_code=403,
+                    response_text=response_text
+                )
+            
             return None
 
         except tweepy.Unauthorized as e:
@@ -259,6 +272,7 @@ class TwitterAPI:
 
         except Exception as e:
             error_msg = str(e).lower()
+            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
 
             # Check for specific OAuth 1.0a permission errors (legacy)
             if "oauth1 app permissions" in error_msg or "403" in error_msg:
@@ -268,8 +282,26 @@ class TwitterAPI:
                 logger.error("1. Go to your app's 'App permissions' section")
                 logger.error("2. Set permissions to 'Read and Write'")
                 logger.error("3. Regenerate your Access Token and Secret after changing permissions")
+                
+                # Notify Discord
+                if self.discord:
+                    status_code = 403 if "403" in error_msg else None
+                    self.discord.notify_twitter_post_error(
+                        username="Unknown",
+                        error=f"Twitter Error: {e}",
+                        status_code=status_code,
+                        response_text=response_text
+                    )
             else:
                 logger.error(f"Error posting tweet: {e}")
+                
+                # Notify Discord about other Twitter errors
+                if self.discord:
+                    self.discord.notify_twitter_post_error(
+                        username="Unknown",
+                        error=f"Twitter Error: {e}",
+                        response_text=response_text
+                    )
 
             return None
     

@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class StoryArchiver:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, discord_notifier=None):
         self.config = config
-        self.instagram_api = InstagramAPI(config)
-        self.twitter_api = TwitterAPI(config)
+        self.discord = discord_notifier
+        self.instagram_api = InstagramAPI(config, discord_notifier)
+        self.twitter_api = TwitterAPI(config, discord_notifier)
         self.media_manager = MediaManager(config.MEDIA_CACHE_DIR)
         self.archive_manager = ArchiveManager(
             config.ARCHIVE_DB_PATH,
@@ -300,6 +301,15 @@ class StoryArchiver:
             self.archive_manager.update_story_local_paths(username, story_id, [])
 
             logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
+            
+            # Notify Discord about successful Twitter post
+            if self.discord:
+                self.discord.notify_twitter_post_success(
+                    username=username,
+                    story_count=1,
+                    tweet_ids=tweet_ids
+                )
+            
             return True
         except Exception as e:
             logger.error(f"Error posting story {story_id}: {e}", exc_info=True)
