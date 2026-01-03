@@ -16,7 +16,7 @@ The archiver is orchestrated by two separate GitHub Actions workflows:
 ### Post Workflow
 - **Schedule**: Daily at 00:00 UTC+7 (cron: `0 17 * * *` UTC)
 - **Command**: `python main.py --post-daily`
-- **Purpose**: Post yesterday's stories grouped by day
+- **Purpose**: Post stories from previous days grouped by day
 - **Runtime**: ~3-7 minutes per run
 - **Posts** to Twitter with batched media
 
@@ -146,7 +146,7 @@ Reference: https://crontab.guru
 2. **Setup Python** - Installs Python 3.11
 3. **Install Dependencies** - Runs `pip install -r requirements.txt`
 4. **Post Stories** - Runs `python main.py --post-daily`
-   - Groups yesterday's stories by day (UTC+7)
+   - Groups stories from previous days by day (UTC+7)
    - Posts to Twitter with up to 4 media items per tweet
    - Updates `archive.json` with `tweet_ids`
    - Deletes media files from `media_cache/`
@@ -262,7 +262,7 @@ If you need to reduce usage:
 
 Both workflows already have built-in conditional logic:
 - Archive workflow: Only processes new stories
-- Post workflow: Only posts stories from yesterday (UTC+7)
+- Post workflow: Only posts stories from previous days (UTC+7)
 
 ### Notifications
 
@@ -332,7 +332,7 @@ The `archive.json` file grows over time. GitHub has size limits for individual f
 ### Expected Results
 
 - **Archive workflow**: Runs every 8 hours, downloads new stories
-- **Post workflow**: Runs daily at 00:00 UTC+7, posts yesterday's stories
+- **Post workflow**: Runs daily at 00:00 UTC+7, posts stories from previous days
 - `archive.json` tracks all archived stories with timestamps
 - `archiver.log` available in artifacts (7-day retention)
 

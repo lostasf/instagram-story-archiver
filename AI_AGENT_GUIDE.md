@@ -8,7 +8,7 @@ This document helps AI agents quickly understand and work with this codebase.
 
 **Core Flow**:
 1. Archive workflow (every 8h): Downloads stories from Instagram → saves to `archive.json`
-2. Post workflow (daily at 00:00 UTC+7): Groups yesterday's stories → posts to Twitter in threads
+2. Post workflow (daily at 00:00 UTC+7): Groups stories from previous days → posts to Twitter in threads
 
 **Key Components**:
 - `main.py` - Entry point with CLI flags
@@ -32,14 +32,14 @@ This document helps AI agents quickly understand and work with this codebase.
 **Post workflow** (`.github/workflows/post-stories.yml`):
 - Runs daily at 00:00 UTC+7: `cron: '0 17 * * *'` (UTC)
 - Command: `python main.py --post-daily`
-- Purpose: Post yesterday's stories grouped by day
+- Purpose: Post stories from previous days grouped by day
 - Posts to Twitter with batched media
 
 ### Timezone Logic (CRITICAL)
 
 All posting logic uses **UTC+7 timezone**:
 - Instagram's `uploadTime` is Unix timestamp (UTC)
-- Convert to UTC+7 to determine "yesterday"
+- Convert to UTC+7 to determine "previous days"
 - Stories where `uploadTime < today (UTC+7)` are eligible for posting
 - Stories uploaded today (UTC+7) are NOT posted until tomorrow
 
@@ -96,7 +96,7 @@ Twitter allows up to 4 media items per tweet (images or videos).
 | Flag | Purpose | Workflow |
 |------|---------|-----------|
 | `--fetch-only` | Archive only, no posting | Archive workflow |
-| `--post-daily` | Post yesterday's stories grouped by day | Post workflow |
+| `--post-daily` | Post stories from previous days grouped by day | Post workflow |
 | `--status` | Show archive statistics | Both (monitoring) |
 | `--story-id` | Archive specific story | Testing/debugging |
 | `--username` | Specify Instagram username | With --story-id |
@@ -123,7 +123,7 @@ python test_setup.py
 # Archive only (no posting)
 python main.py --fetch-only
 
-# Post yesterday's stories
+# Post stories from previous days
 python main.py --post-daily
 
 # Check archive status

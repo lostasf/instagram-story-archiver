@@ -595,8 +595,8 @@ class StoryArchiver:
         """Post pending stories grouped by day to avoid spamming.
 
         Logic:
-        1. Get yesterday's date in GMT+7 timezone
-        2. Find stories with empty tweet_ids AND uploadTime on yesterday
+        1. Get current date in GMT+7 timezone
+        2. Find stories with empty tweet_ids AND uploadTime before today
         3. Group stories by their upload date
         4. For each day's stories, combine all media into batches of 4
         5. Post each batch as a tweet in a thread (one thread per day)
@@ -606,16 +606,15 @@ class StoryArchiver:
 
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday_start = today_start - timedelta(days=1)
-        logger.info(f"Checking for pending stories from yesterday ({yesterday_start.strftime('%Y-%m-%d')})")
+        logger.info(f"Checking for pending stories to post (current time: {now}, today start: {today_start})")
 
         for username in self.config.INSTAGRAM_USERNAMES:
             username = username.strip().lstrip('@')
             stats = self.archive_manager.get_statistics(username)
             stories = stats.get('stories', [])
 
-            # Find unposted stories uploaded yesterday
-            stories_yesterday = []
+            # Find unposted stories uploaded before today
+            stories_to_post = []
             for story in stories:
                 if not story.get('tweet_ids'):
                     uploadTime = story.get('uploadTime') or story.get('taken_at')
@@ -630,23 +629,23 @@ class StoryArchiver:
                         logger.warning(f"Invalid uploadTime for story {story.get('story_id')}: {e}, skipping")
                         continue
 
-                    # Check if story was uploaded yesterday
-                    if yesterday_start <= upload_datetime < today_start:
-                        stories_yesterday.append(story)
+                    # Check if story was uploaded before today
+                    if upload_datetime < today_start:
+                        stories_to_post.append(story)
 
-            if not stories_yesterday:
-                logger.info(f"No stories from yesterday for {username}")
+            if not stories_to_post:
+                logger.info(f"No stories to post for {username}")
                 continue
 
             # Group stories by upload date
             stories_by_date = {}
-            for story in stories_yesterday:
+            for story in stories_to_post:
                 uploadTime = int(story.get('uploadTime') or story.get('taken_at', 0))
                 upload_datetime = datetime.fromtimestamp(uploadTime, tz=timezone(timedelta(hours=7)))
                 date_key = upload_datetime.strftime('%Y-%m-%d')
                 stories_by_date.setdefault(date_key, []).append(story)
 
-            logger.info(f"Found {len(stories_yesterday)} stories from yesterday for {username}, grouped into {len(stories_by_date)} day(s)")
+            logger.info(f"Found {len(stories_to_post)} stories to post for {username}, grouped into {len(stories_by_date)} day(s)")
 
             # Process each day's stories
             for date_key, day_stories in sorted(stories_by_date.items()):

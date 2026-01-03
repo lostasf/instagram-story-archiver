@@ -5,7 +5,7 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 ## ✨ Features
 
 - 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every 8 hours
-- 🐦 **Daily Twitter Posting**: Posts yesterday's stories at 00:00 UTC+7 grouped by day
+- 🐦 **Daily Twitter Posting**: Posts stories from previous days at 00:00 UTC+7 grouped by day
 - 💾 **Archive Database**: Keeps track of all archived stories and local media
 - ⚙️ **Two-Workflow System**: Separate workflows for archiving (`--fetch-only`) and posting (`--post-daily`)
 - 🖼️ **Media Optimization**: Automatically compresses images to meet Twitter size limits
@@ -43,7 +43,7 @@ Go to **Settings → Secrets and variables → Actions** and add:
 
 The workflows run automatically:
 - **Archive workflow**: Every 8 hours (fetches stories only)
-- **Post workflow**: Daily at 00:00 UTC+7 (posts yesterday's stories)
+- **Post workflow**: Daily at 00:00 UTC+7 (posts stories from previous days)
 
 Check the **Actions** tab to see runs.
 
@@ -67,7 +67,7 @@ cp .env.example .env
 # Archive only (fetch stories, don't post)
 python main.py --fetch-only
 
-# Post yesterday's stories (grouped by day)
+# Post stories from previous days (grouped by day)
 python main.py --post-daily
 
 # Archive and post in one run
@@ -101,7 +101,7 @@ This project uses **two separate GitHub Actions workflows** for optimal automati
 #### 2. Post Workflow (`post-stories.yml`)
 - **Schedule**: Daily at 00:00 UTC+7 (cron: `0 17 * * *` UTC)
 - **Command**: `python main.py --post-daily`
-- **Purpose**: Post yesterday's stories grouped by day
+- **Purpose**: Post stories from previous days grouped by day
 - **Posts** to Twitter with batched media (up to 4 items per tweet)
 
 ### Story Processing Flow
@@ -122,7 +122,7 @@ This project uses **two separate GitHub Actions workflows** for optimal automati
 
 **Key Logic**:
 - Stories uploaded **today** (UTC+7) are logged as "planned for next day" - not posted until tomorrow
-- Stories uploaded **yesterday** (UTC+7) are posted in batches when the workflow runs at 00:00 UTC+7
+- Stories uploaded **before today** (UTC+7) are posted in batches when the workflow runs at 00:00 UTC+7
 - This ensures a complete day's stories are posted together in organized threads
 
 ### Thread Structure
