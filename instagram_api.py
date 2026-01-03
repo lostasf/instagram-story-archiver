@@ -140,6 +140,26 @@ class InstagramAPI:
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching story: {e}")
+            
+            # Notify Discord about Instagram API failure
+            if self.discord:
+                status_code = None
+                response_text = None
+
+                if hasattr(e, 'response') and e.response is not None:
+                    status_code = getattr(e.response, 'status_code', None)
+                    try:
+                        response_text = e.response.text[:1000]
+                    except Exception:
+                        response_text = str(e.response)[:1000]
+
+                self.discord.notify_instagram_fetch_error(
+                    username=username,
+                    error=f"Error fetching specific story: {e}",
+                    status_code=status_code,
+                    response_data=response_text,
+                )
+
             return None
     
     def extract_media_urls(self, story_data: Dict) -> List[Dict]:

@@ -102,11 +102,15 @@ class TwitterAPI:
 
         except tweepy.Forbidden as e:
             error_msg = str(e)
+            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
             logger.error("Twitter API Permission Error (403 Forbidden)")
-            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
-            logger.error("This typically means your Twitter app permissions are not configured correctly.")
+            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
+            
+            diagnosis = self._diagnose_403_error(response_text)
+            logger.error(diagnosis)
+            
             logger.error("")
-            logger.error("TO FIX THIS ISSUE:")
+            logger.error("TO FIX THIS ISSUE (if it is a permission problem):")
             logger.error("1. Go to https://developer.twitter.com/en/portal/dashboard")
             logger.error("2. Select your app")
             logger.error("3. Go to 'Settings' > 'App permissions'")
@@ -118,11 +122,22 @@ class TwitterAPI:
             logger.error("9. Update your GitHub Actions secrets with the new tokens")
             logger.error("")
             logger.error(f"Technical details: {error_msg}")
+            
+            # If we have discord, notify with diagnosis
+            if self.discord:
+                self.discord.notify_twitter_post_error(
+                    username="N/A (Verification)",
+                    error=diagnosis,
+                    status_code=403,
+                    response_text=response_text
+                )
+            
             return False
 
         except tweepy.Unauthorized as e:
+            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
             logger.error("Twitter API Authentication Error (401 Unauthorized)")
-            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
             logger.error("Your API keys or access tokens are invalid or expired.")
             logger.error("")
             logger.error("TO FIX THIS ISSUE:")
@@ -135,6 +150,67 @@ class TwitterAPI:
         except Exception as e:
             logger.error(f"Unexpected error verifying Twitter credentials: {e}")
             return False
+
+    def _diagnose_403_error(self, response_text: str) -> str:
+        """
+        Analyze the 403 Forbidden response from Twitter to provide more helpful advice.
+        """
+        if not response_text or response_text == 'N/A':
+            return "Twitter API Permission Error (403 Forbidden). No additional details provided by the API."
+
+        diagnosis = "Twitter API Permission Error (403 Forbidden):\n"
+        
+        # Check for Cloudflare
+        if "cloudflare" in response_text.lower() or "<!DOCTYPE html>" in response_text:
+            diagnosis += ("- CLOUDFLARE BLOCK: It seems your request was blocked by Cloudflare (likely due to GitHub Actions IP range).\n"
+                         "  Try running the action at a different time or use a proxy/self-hosted runner if possible.")
+            return diagnosis
+
+        # Check for duplicate content (Error code 187)
+        if "duplicate content" in response_text.lower() or '"code":187' in response_text.replace(" ", ""):
+            diagnosis += ("- DUPLICATE CONTENT: Twitter detected you are trying to post a duplicate tweet/media.\n"
+                         "  Twitter prevents posting identical content multiple times in a short period.")
+            return diagnosis
+
+        # Check for automated request block (Error code 226)
+        if '"code":226' in response_text.replace(" ", "") or "automated" in response_text.lower():
+            diagnosis += ("- SPAM/AUTOMATED BLOCK: Twitter flagged this request as potentially automated or spam.\n"
+                         "  This can happen if you post too frequently or if the account is flagged.")
+            return diagnosis
+
+        # Check for Essential access limitations (Error code 453)
+        if "essential" in response_text.lower() or '"code":453' in response_text.replace(" ", ""):
+            diagnosis += ("- ACCESS LEVEL LIMIT: You might have 'Essential' access which has limited v1.1 access.\n"
+                         "  Make sure you have at least 'Elevated' access if using v1.1 endpoints for media upload.")
+            return diagnosis
+
+        # Check for missing write permissions
+        if "read-only" in response_text.lower() or "app-only" in response_text.lower() or "permissions" in response_text.lower():
+            diagnosis += ("- PERMISSION ERROR: Your app likely only has 'Read' permissions.\n"
+                         "  Go to the Twitter Developer Portal and change your app permissions to 'Read and Write'.\n"
+                         "  IMPORTANT: You MUST regenerate your Access Token and Secret AFTER changing permissions.")
+            return diagnosis
+            
+        # Check for account locks
+        if "temporarily locked" in response_text.lower() or "account is locked" in response_text.lower():
+            diagnosis += ("- ACCOUNT LOCKED: Your Twitter account is temporarily locked.\n"
+                         "  Please log in to twitter.com via a browser to unlock your account.")
+            return diagnosis
+
+        # Check for suspended account (Error code 64 or 344)
+        if '"code":64' in response_text.replace(" ", "") or '"code":344' in response_text.replace(" ", "") or "suspended" in response_text.lower():
+            diagnosis += ("- ACCOUNT SUSPENDED: Your Twitter account seems to be suspended.\n"
+                         "  Check your account status on twitter.com.")
+            return diagnosis
+
+        # Check for daily limit (Error code 185)
+        if '"code":185' in response_text.replace(" ", "") or "daily limit" in response_text.lower():
+            diagnosis += ("- DAILY LIMIT EXCEEDED: You have reached the daily limit for posting tweets.\n"
+                         "  Wait 24 hours and try again.")
+            return diagnosis
+
+        diagnosis += f"- Raw Response: {response_text}"
+        return diagnosis
     
     def upload_media(self, media_path: str, username: str = "Unknown") -> Optional[str]:
         """
@@ -171,16 +247,17 @@ class TwitterAPI:
                     return media_id
 
                 except tweepy.Forbidden as upload_error:
+                    response_text = upload_error.response.text if hasattr(upload_error, 'response') else 'N/A'
                     logger.error(
                         f"Twitter API Permission Error (403 Forbidden) during media upload: {upload_error}"
                     )
+                    logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
+                    
+                    diagnosis = self._diagnose_403_error(response_text)
+                    logger.error(diagnosis)
 
-                    response_text = upload_error.response.text if hasattr(upload_error, 'response') else 'N/A'
-                    logger.error(f"Response: {response_text}")
                     logger.error("")
-                    logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
-                    logger.error("")
-                    logger.error("TO FIX THIS ISSUE:")
+                    logger.error("TO FIX THIS ISSUE (if it is a permission problem):")
                     logger.error("1. Go to https://developer.twitter.com/en/portal/dashboard")
                     logger.error("2. Select your app")
                     logger.error("3. Go to 'Settings' > 'App permissions'")
@@ -197,7 +274,7 @@ class TwitterAPI:
                     if self.discord:
                         self.discord.notify_twitter_post_error(
                             username=username,
-                            error=str(upload_error),
+                            error=diagnosis,
                             status_code=getattr(upload_error.response, 'status_code', 403)
                             if hasattr(upload_error, 'response') and upload_error.response is not None
                             else 403,
@@ -208,11 +285,15 @@ class TwitterAPI:
 
                 except Exception as upload_error:
                     error_msg = str(upload_error).lower()
+                    response_text = getattr(getattr(upload_error, 'response', None), 'text', 'N/A')
 
                     # Check for specific OAuth 1.0a permission errors (legacy format)
                     if "oauth1 app permissions" in error_msg or "403" in error_msg:
-                        logger.error(f"OAuth 1.0a permission error: {upload_error}")
-                        logger.error("This error indicates your Twitter app needs OAuth 1.0a permissions.")
+                        logger.error(f"Twitter error during upload: {upload_error}")
+                        
+                        diagnosis = self._diagnose_403_error(response_text) if "403" in error_msg else f"OAuth 1.0a permission error: {upload_error}"
+                        logger.error(diagnosis)
+                        
                         logger.error("Please check your Twitter Developer Portal app settings:")
                         logger.error("1. Go to your app's 'Keys and tokens' section")
                         logger.error("2. Ensure your app has 'Read and Write' permissions")
@@ -221,9 +302,9 @@ class TwitterAPI:
                         if self.discord:
                             self.discord.notify_twitter_post_error(
                                 username=username,
-                                error=str(upload_error),
+                                error=diagnosis,
                                 status_code=403 if "403" in error_msg else None,
-                                response_text=None,
+                                response_text=response_text if response_text != 'N/A' else None,
                             )
 
                         return None
@@ -276,13 +357,15 @@ class TwitterAPI:
         except tweepy.Forbidden as e:
             error_msg = str(e)
             response_text = e.response.text if hasattr(e, 'response') else 'N/A'
-            
+
             logger.error(f"Twitter API Permission Error (403 Forbidden): {e}")
-            logger.error(f"Response: {response_text}")
+            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
+
+            diagnosis = self._diagnose_403_error(response_text)
+            logger.error(diagnosis)
+
             logger.error("")
-            logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
-            logger.error("")
-            logger.error("TO FIX THIS ISSUE:")
+            logger.error("TO FIX THIS ISSUE (if it is a permission problem):")
             logger.error("1. Go to https://developer.twitter.com/en/portal/dashboard")
             logger.error("2. Select your app")
             logger.error("3. Go to 'Settings' > 'App permissions'")
@@ -295,22 +378,22 @@ class TwitterAPI:
             logger.error("")
             logger.error("⚠️  THE OLD TOKENS WON'T WORK WITH NEW PERMISSIONS!")
             logger.error("⚠️  YOU MUST REGENERATE THEM AFTER CHANGING PERMISSIONS!")
-            
+
             # Notify Discord about Twitter 403 error
             if self.discord:
                 self.discord.notify_twitter_post_error(
                     username=username,
-                    error=f"Twitter API Permission Error (403 Forbidden): {e}",
+                    error=diagnosis,
                     status_code=getattr(e.response, 'status_code', 403) if hasattr(e, 'response') else 403,
                     response_text=response_text,
                 )
-            
+
             return None
 
         except tweepy.Unauthorized as e:
             response_text = e.response.text if hasattr(e, 'response') else 'N/A'
             logger.error(f"Twitter API Authentication Error (401 Unauthorized): {e}")
-            logger.error(f"Response: {response_text}")
+            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
             logger.error("Your access tokens may be invalid or expired.")
             logger.error("Try regenerating your Access Token and Secret in the Twitter Developer Portal.")
 
@@ -330,8 +413,11 @@ class TwitterAPI:
 
             # Check for specific OAuth 1.0a permission errors (legacy)
             if "oauth1 app permissions" in error_msg or "403" in error_msg:
-                logger.error(f"OAuth permission error: {e}")
-                logger.error("This error indicates your Twitter app permissions need to be updated.")
+                logger.error(f"Twitter error: {e}")
+                
+                diagnosis = self._diagnose_403_error(response_text) if "403" in error_msg else f"OAuth permission error: {e}"
+                logger.error(diagnosis)
+                
                 logger.error("Please check your Twitter Developer Portal app settings:")
                 logger.error("1. Go to your app's 'App permissions' section")
                 logger.error("2. Set permissions to 'Read and Write'")
@@ -342,7 +428,7 @@ class TwitterAPI:
                     status_code = 403 if "403" in error_msg else None
                     self.discord.notify_twitter_post_error(
                         username=username,
-                        error=f"Twitter Error: {e}",
+                        error=diagnosis,
                         status_code=status_code,
                         response_text=response_text,
                     )
