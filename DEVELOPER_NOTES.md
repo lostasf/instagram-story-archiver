@@ -8,7 +8,7 @@ Technical documentation for developers working on this codebase.
 
 **main.py** - Entry point with CLI flags
 - `--fetch-only`: Archive stories only, don't post
-- `--post-daily`: Post yesterday's stories grouped by day
+- `--post-daily`: Post stories from previous days grouped by day
 - `--status`: Show archive statistics
 - `--story-id`: Archive a specific story
 - `--username`: Specify Instagram username for --story-id
@@ -78,7 +78,7 @@ Technical documentation for developers working on this codebase.
 **Critical**: All posting logic uses UTC+7 timezone.
 
 - Instagram's `taken_at` is a Unix timestamp (UTC)
-- Convert to UTC+7 for "yesterday" check
+- Convert to UTC+7 for "previous days" check
 - `taken_at < today (UTC+7)` means story is eligible for posting
 - Stories uploaded today (UTC+7) are NOT posted until tomorrow
 
@@ -161,7 +161,7 @@ If story has 5 media items:
 **post-stories.yml**:
 - Schedule: Daily at 00:00 UTC+7 (`0 17 * * *` UTC)
 - Command: `python main.py --post-daily`
-- Purpose: Post yesterday's stories
+- Purpose: Post stories from previous days
 - Commits: `archive.json` (with tweet_ids) and `archiver.log`
 
 ### Why Separate?
@@ -176,7 +176,7 @@ If story has 5 media items:
 | Flag | Purpose | Use Case |
 |------|---------|-----------|
 | `--fetch-only` | Archive only, no posting | Archive workflow |
-| `--post-daily` | Post yesterday's stories grouped by day | Post workflow |
+| `--post-daily` | Post stories from previous days grouped by day | Post workflow |
 | `--status` | Show archive statistics | Monitoring |
 | `--story-id` | Archive specific story | Testing/debugging |
 | `--username` | Specify Instagram username | With --story-id |

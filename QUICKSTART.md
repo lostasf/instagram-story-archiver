@@ -40,7 +40,7 @@ TWITTER_THREAD_CONFIG={"jkt48.gendis": {"anchor": "Gendis Stories 🌸"}, "jkt48
 
 The workflows will run automatically:
 - **Archive workflow**: Every 8 hours (fetches stories only)
-- **Post workflow**: Daily at 00:00 UTC+7 (posts yesterday's stories)
+- **Post workflow**: Daily at 00:00 UTC+7 (posts stories from previous days)
 
 Go to **Actions** tab to see runs.
 
@@ -85,7 +85,7 @@ Should show:
 # Archive only (fetch stories, don't post)
 python main.py --fetch-only
 
-# Post yesterday's stories (grouped by day)
+# Post stories from previous days (grouped by day)
 python main.py --post-daily
 
 # Archive and post in one run (not recommended for production)
@@ -108,7 +108,7 @@ python main.py --archive-only
 
 ### Post Stories
 ```bash
-# Post yesterday's stories grouped by day
+# Post stories from previous days grouped by day
 python main.py --post-daily
 
 # Post all pending stories (not grouped)
@@ -225,7 +225,7 @@ python test_setup.py
 Each day's stories become a Twitter thread:
 
 - **Archive workflow**: Downloads all new stories every 8 hours
-- **Post workflow**: Posts yesterday's stories in organized threads
+- **Post workflow**: Posts stories from previous days in organized threads
   - Up to 4 media items per tweet
   - Progress indicators: `(1/2)`, `(2/2)` for multi-tweet days
   - Custom captions per account
