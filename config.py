@@ -48,6 +48,8 @@ class Config:
 
         self.ARCHIVE_DB_PATH = os.getenv('ARCHIVE_DB_PATH', './archive.json')
         self.MEDIA_CACHE_DIR = os.getenv('MEDIA_CACHE_DIR', './media_cache')
+        
+        self.DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
 
         self.TWITTER_THREAD_CONFIG = self._load_thread_config()
 

@@ -8,11 +8,13 @@ Posts stories at the start of the next day.
 """
 
 import logging
+import os
 import sys
 from datetime import datetime
 
 from config import Config
 from story_archiver import StoryArchiver
+from discord_notifier import DiscordNotifier
 
 # Configure logging to ensure logs are written and flushed immediately
 logging.basicConfig(
@@ -58,67 +60,129 @@ def main():
         logger.error(f"Configuration error: {e}")
         sys.exit(1)
 
-    archiver = StoryArchiver(config)
+    discord = DiscordNotifier(config.DISCORD_WEBHOOK_URL)
+    
+    # GitHub Actions context for notifications
+    github_context = {
+        'workflow': os.getenv('GITHUB_WORKFLOW', 'Manual Run'),
+        'actor': os.getenv('GITHUB_ACTOR', 'Local User'),
+        'repository': os.getenv('GITHUB_REPOSITORY', 'Local Repository'),
+        'branch': os.getenv('GITHUB_REF_NAME', 'main'),
+        'run_url': os.getenv('GITHUB_SERVER_URL', 'https://github.com') + '/' + \
+                   os.getenv('GITHUB_REPOSITORY', 'user/repo') + '/actions/runs/' + \
+                   os.getenv('GITHUB_RUN_ID', '0')
+    }
 
-    if args.verify_twitter:
-        logger.info("Verifying Twitter API credentials...")
-        if archiver.twitter_api.verify_credentials():
-            logger.info("✓ Twitter API credentials are valid")
-            logger.info("✓ Your Twitter app has the correct permissions")
-            sys.exit(0)
-        else:
-            logger.error("✗ Twitter API verification failed")
-            sys.exit(1)
+    # Notify start
+    if os.getenv('GITHUB_ACTIONS'):
+        discord.notify_github_action_start(
+            workflow_name=github_context['workflow'],
+            actor=github_context['actor'],
+            repository=github_context['repository'],
+            branch=github_context['branch']
+        )
 
-    if args.status:
-        archiver.print_status()
-        return
+    archiver = StoryArchiver(config, discord)
 
-    if args.story_id:
-        username = (args.username or config.INSTAGRAM_USERNAME).strip().lstrip('@')
-        logger.info(f"Archiving specific story for {username}: {args.story_id}")
-        success = archiver.process_story(username, args.story_id)
-        if success:
-            logger.info("Story archived successfully")
+    try:
+        if args.verify_twitter:
+            logger.info("Verifying Twitter API credentials...")
+            if archiver.twitter_api.verify_credentials():
+                logger.info("✓ Twitter API credentials are valid")
+                logger.info("✓ Your Twitter app has the correct permissions")
+                sys.exit(0)
+            else:
+                logger.error("✗ Twitter API verification failed")
+                sys.exit(1)
+
+        if args.status:
+            archiver.print_status()
             return
 
-        logger.error("Failed to archive story")
-        sys.exit(1)
+        if args.story_id:
+            username = (args.username or config.INSTAGRAM_USERNAME).strip().lstrip('@')
+            logger.info(f"Archiving specific story for {username}: {args.story_id}")
+            success = archiver.process_story(username, args.story_id)
+            if success:
+                logger.info("Story archived successfully")
+                return
 
-    logger.info(f"Starting archive check at {datetime.now()}")
-    logger.info(f"Watching Instagram accounts: {', '.join(config.INSTAGRAM_USERNAMES)}")
+            logger.error("Failed to archive story")
+            sys.exit(1)
 
-    # Handle --post-daily flag (post only, no archiving)
-    if args.post_daily:
-        logger.info("Running in daily post mode...")
-        new_posted = archiver.post_pending_stories_daily()
-        logger.info(f"Posted {new_posted} stories from previous days")
+        logger.info(f"Starting archive check at {datetime.now()}")
+        logger.info(f"Watching Instagram accounts: {', '.join(config.INSTAGRAM_USERNAMES)}")
+
+        # Handle --post-daily flag (post only, no archiving)
+        if args.post_daily:
+            logger.info("Running in daily post mode...")
+            new_posted = archiver.post_pending_stories_daily()
+            logger.info(f"Posted {new_posted} stories from previous days")
+            archiver.log_pending_story_count()
+            archiver.print_status()
+            logger.info("Daily post check completed")
+            return
+
+        # Archive all stories (always do this unless --post-daily)
+        if args.archive_only:
+            new_archived = archiver.archive_only()
+        else:
+            new_archived = archiver.archive_all_stories()
+        logger.info(f"Archived {new_archived} new stories")
+
+        # Post pending stories unless --fetch-only is set
+        if not args.fetch_only and not args.archive_only:
+            logger.info("Checking for pending stories to post...")
+            new_posted = archiver.post_pending_stories()
+            logger.info(f"Posted {new_posted} pending stories")
+        elif args.fetch_only:
+            logger.info("Skipping post step (--fetch-only)")
+        elif args.archive_only:
+            logger.info("Skipping post step (--archive-only)")
+
         archiver.log_pending_story_count()
+
         archiver.print_status()
-        logger.info("Daily post check completed")
-        return
+        logger.info("Archive check completed")
 
-    # Archive all stories (always do this unless --post-daily)
-    if args.archive_only:
-        new_archived = archiver.archive_only()
-    else:
-        new_archived = archiver.archive_all_stories()
-    logger.info(f"Archived {new_archived} new stories")
+        # Notify success for GitHub Actions
+        if os.getenv('GITHUB_ACTIONS'):
+            with open('archiver.log', 'r') as log_file:
+                logs = log_file.read()
+            discord.notify_github_action_success(
+                workflow_name=github_context['workflow'],
+                actor=github_context['actor'],
+                repository=github_context['repository'],
+                branch=github_context['branch'],
+                run_url=github_context['run_url'],
+                logs=logs[-2000:] if len(logs) > 2000 else logs
+            )
 
-    # Post pending stories unless --fetch-only is set
-    if not args.fetch_only and not args.archive_only:
-        logger.info("Checking for pending stories to post...")
-        new_posted = archiver.post_pending_stories()
-        logger.info(f"Posted {new_posted} pending stories")
-    elif args.fetch_only:
-        logger.info("Skipping post step (--fetch-only)")
-    elif args.archive_only:
-        logger.info("Skipping post step (--archive-only)")
-
-    archiver.log_pending_story_count()
-
-    archiver.print_status()
-    logger.info("Archive check completed")
+    except Exception as e:
+        logger.error(f"Fatal error: {str(e)}", exc_info=True)
+        
+        # Notify failure for GitHub Actions
+        if os.getenv('GITHUB_ACTIONS'):
+            import traceback
+            error_trace = traceback.format_exc()
+            logs = ""
+            try:
+                with open('archiver.log', 'r') as log_file:
+                    logs = log_file.read()
+            except:
+                pass
+                
+            discord.notify_github_action_failure(
+                workflow_name=github_context['workflow'],
+                actor=github_context['actor'],
+                repository=github_context['repository'],
+                branch=github_context['branch'],
+                error=error_trace,
+                run_url=github_context['run_url'],
+                logs=logs[-2000:] if len(logs) > 2000 else logs
+            )
+        
+        sys.exit(1)
 
 
 if __name__ == '__main__':
