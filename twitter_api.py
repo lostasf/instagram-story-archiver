@@ -136,13 +136,16 @@ class TwitterAPI:
             logger.error(f"Unexpected error verifying Twitter credentials: {e}")
             return False
     
-    def upload_media(self, media_path: str) -> Optional[str]:
+    def upload_media(self, media_path: str, username: str = "Unknown") -> Optional[str]:
         """
         Upload media to Twitter and return media ID.
         Uses OAuth 1.0a for media upload with better error handling.
         """
         if not self.v1_client:
-            logger.error("Cannot upload media: v1.1 API client not initialized (OAuth 1.0a tokens missing)")
+            message = "Cannot upload media: v1.1 API client not initialized (OAuth 1.0a tokens missing)"
+            logger.error(message)
+            if self.discord:
+                self.discord.notify_twitter_post_error(username=username, error=message)
             return None
 
         try:
@@ -151,7 +154,10 @@ class TwitterAPI:
             # Check file size (Twitter limit is 5MB for images, 15MB for videos)
             file_size = os.path.getsize(media_path)
             if file_size > 15 * 1024 * 1024:  # 15MB
-                logger.error(f"File too large: {file_size} bytes (max 15MB)")
+                message = f"File too large: {file_size} bytes (max 15MB)"
+                logger.error(message)
+                if self.discord:
+                    self.discord.notify_twitter_post_error(username=username, error=message)
                 return None
 
             # Try media upload with retry logic
@@ -165,9 +171,12 @@ class TwitterAPI:
                     return media_id
 
                 except tweepy.Forbidden as upload_error:
-                    error_msg = str(upload_error)
-                    logger.error(f"Twitter API Permission Error (403 Forbidden) during media upload: {upload_error}")
-                    logger.error(f"Response: {upload_error.response.text if hasattr(upload_error, 'response') else 'N/A'}")
+                    logger.error(
+                        f"Twitter API Permission Error (403 Forbidden) during media upload: {upload_error}"
+                    )
+
+                    response_text = upload_error.response.text if hasattr(upload_error, 'response') else 'N/A'
+                    logger.error(f"Response: {response_text}")
                     logger.error("")
                     logger.error("THIS ERROR MEANS YOUR TWITTER APP DOES NOT HAVE WRITE PERMISSIONS")
                     logger.error("")
@@ -184,6 +193,17 @@ class TwitterAPI:
                     logger.error("")
                     logger.error("⚠️  THE OLD TOKENS WON'T WORK WITH NEW PERMISSIONS!")
                     logger.error("⚠️  YOU MUST REGENERATE THEM AFTER CHANGING PERMISSIONS!")
+
+                    if self.discord:
+                        self.discord.notify_twitter_post_error(
+                            username=username,
+                            error=str(upload_error),
+                            status_code=getattr(upload_error.response, 'status_code', 403)
+                            if hasattr(upload_error, 'response') and upload_error.response is not None
+                            else 403,
+                            response_text=response_text,
+                        )
+
                     return None
 
                 except Exception as upload_error:
@@ -197,6 +217,15 @@ class TwitterAPI:
                         logger.error("1. Go to your app's 'Keys and tokens' section")
                         logger.error("2. Ensure your app has 'Read and Write' permissions")
                         logger.error("3. Regenerate your Access Token and Secret after changing permissions")
+
+                        if self.discord:
+                            self.discord.notify_twitter_post_error(
+                                username=username,
+                                error=str(upload_error),
+                                status_code=403 if "403" in error_msg else None,
+                                response_text=None,
+                            )
+
                         return None
 
                     # For other errors, retry
@@ -209,9 +238,24 @@ class TwitterAPI:
 
         except Exception as e:
             logger.error(f"Error uploading media: {e}")
+            if self.discord:
+                response_text = getattr(getattr(e, 'response', None), 'text', None)
+                status_code = getattr(getattr(e, 'response', None), 'status_code', None)
+                self.discord.notify_twitter_post_error(
+                    username=username,
+                    error=str(e),
+                    status_code=status_code,
+                    response_text=response_text,
+                )
             return None
     
-    def post_tweet(self, text: str, media_ids: List[str] = None, reply_to_id: str = None) -> Optional[str]:
+    def post_tweet(
+        self,
+        text: str,
+        media_ids: List[str] = None,
+        reply_to_id: str = None,
+        username: str = "Unknown",
+    ) -> Optional[str]:
         """
         Post a tweet with optional media and reply thread support.
         Returns tweet ID if successful.
@@ -255,19 +299,29 @@ class TwitterAPI:
             # Notify Discord about Twitter 403 error
             if self.discord:
                 self.discord.notify_twitter_post_error(
-                    username="Unknown",  # Will be updated by caller
+                    username=username,
                     error=f"Twitter API Permission Error (403 Forbidden): {e}",
-                    status_code=403,
-                    response_text=response_text
+                    status_code=getattr(e.response, 'status_code', 403) if hasattr(e, 'response') else 403,
+                    response_text=response_text,
                 )
             
             return None
 
         except tweepy.Unauthorized as e:
+            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
             logger.error(f"Twitter API Authentication Error (401 Unauthorized): {e}")
-            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+            logger.error(f"Response: {response_text}")
             logger.error("Your access tokens may be invalid or expired.")
             logger.error("Try regenerating your Access Token and Secret in the Twitter Developer Portal.")
+
+            if self.discord:
+                self.discord.notify_twitter_post_error(
+                    username=username,
+                    error=str(e),
+                    status_code=getattr(e.response, 'status_code', 401) if hasattr(e, 'response') else 401,
+                    response_text=response_text,
+                )
+
             return None
 
         except Exception as e:
@@ -287,20 +341,20 @@ class TwitterAPI:
                 if self.discord:
                     status_code = 403 if "403" in error_msg else None
                     self.discord.notify_twitter_post_error(
-                        username="Unknown",
+                        username=username,
                         error=f"Twitter Error: {e}",
                         status_code=status_code,
-                        response_text=response_text
+                        response_text=response_text,
                     )
             else:
                 logger.error(f"Error posting tweet: {e}")
-                
+
                 # Notify Discord about other Twitter errors
                 if self.discord:
                     self.discord.notify_twitter_post_error(
-                        username="Unknown",
+                        username=username,
                         error=f"Twitter Error: {e}",
-                        response_text=response_text
+                        response_text=response_text,
                     )
 
             return None

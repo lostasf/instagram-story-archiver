@@ -48,8 +48,17 @@ class Config:
 
         self.ARCHIVE_DB_PATH = os.getenv('ARCHIVE_DB_PATH', './archive.json')
         self.MEDIA_CACHE_DIR = os.getenv('MEDIA_CACHE_DIR', './media_cache')
-        
+
+        # Discord notifications
+        # Prefer split webhooks (success vs failure). Fall back to the legacy single webhook if set.
+        self.DISCORD_WEBHOOK_SUCCESS_URL = os.getenv('DISCORD_WEBHOOK_SUCCESS_URL')
+        self.DISCORD_WEBHOOK_FAILURE_URL = os.getenv('DISCORD_WEBHOOK_FAILURE_URL')
         self.DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
+
+        if self.DISCORD_WEBHOOK_URL and not self.DISCORD_WEBHOOK_SUCCESS_URL:
+            self.DISCORD_WEBHOOK_SUCCESS_URL = self.DISCORD_WEBHOOK_URL
+        if self.DISCORD_WEBHOOK_URL and not self.DISCORD_WEBHOOK_FAILURE_URL:
+            self.DISCORD_WEBHOOK_FAILURE_URL = self.DISCORD_WEBHOOK_URL
 
         self.TWITTER_THREAD_CONFIG = self._load_thread_config()
 

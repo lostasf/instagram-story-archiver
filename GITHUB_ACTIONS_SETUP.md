@@ -42,6 +42,10 @@ Go to **Settings → Secrets and variables → Actions** and add the following s
 - `TWITTER_ACCESS_SECRET` - Access Token Secret
 - `TWITTER_BEARER_TOKEN` - Bearer Token
 
+#### Discord Notifications (optional, recommended)
+- `DISCORD_WEBHOOK_SUCCESS_URL` - Webhook URL for the success/info channel
+- `DISCORD_WEBHOOK_FAILURE_URL` - Webhook URL for the failure/errors channel
+
 ### 2. Add Repository Variables
 
 Go to **Settings → Secrets and variables → Variables** and add:

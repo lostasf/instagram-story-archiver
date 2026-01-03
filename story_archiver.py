@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from archive_manager import ArchiveManager
 from config import Config
@@ -45,7 +45,7 @@ class StoryArchiver:
 
         logger.info(f"Creating anchor tweet for {username}...")
         anchor_text = self.config.get_anchor_text(username)
-        anchor_id = self.twitter_api.post_tweet(anchor_text)
+        anchor_id = self.twitter_api.post_tweet(anchor_text, username=username)
 
         if not anchor_id:
             logger.error(f"Failed to create anchor tweet for {username}")
@@ -256,7 +256,7 @@ class StoryArchiver:
                 # Upload all media in batch
                 media_ids = []
                 for path in batch_paths:
-                    media_id = self.twitter_api.upload_media(path)
+                    media_id = self.twitter_api.upload_media(path, username=username)
                     if media_id:
                         media_ids.append(media_id)
                 
@@ -274,6 +274,7 @@ class StoryArchiver:
                     text=tweet_text,
                     media_ids=media_ids,
                     reply_to_id=last_tweet_id,
+                    username=username,
                 )
                 
                 if not tweet_id:
@@ -302,12 +303,12 @@ class StoryArchiver:
 
             logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
             
-            # Notify Discord about successful Twitter post
-            if self.discord:
+            # Notify Discord about successful Twitter post (avoid spamming GitHub Actions runs)
+            if self.discord and not os.getenv('GITHUB_ACTIONS'):
                 self.discord.notify_twitter_post_success(
                     username=username,
                     story_count=1,
-                    tweet_ids=tweet_ids
+                    tweet_ids=tweet_ids,
                 )
             
             return True
@@ -423,6 +424,106 @@ class StoryArchiver:
 
         return added
 
+    def archive_all_stories_for_user_with_summary(self, username: str) -> Tuple[int, Dict[str, int]]:
+        """Fetch + archive stories for a user and return a summary for Discord notifications."""
+        username = username.strip().lstrip('@')
+
+        summary: Dict[str, int] = {
+            'fetched': 0,
+            'new_archived': 0,
+            'already_archived': 0,
+            'already_posted': 0,
+            'fetch_failed': 0,
+        }
+
+        try:
+            self.archive_manager.set_last_check(username)
+            logger.info(f"Starting story check for {username}")
+
+            stories = self.instagram_api.get_user_stories(username)
+            if stories is None:
+                summary['fetch_failed'] = 1
+                logger.error(f"Failed to fetch stories from Instagram API for {username}")
+                return 0, summary
+
+            if not isinstance(stories, list):
+                summary['fetch_failed'] = 1
+                logger.error(f"Expected list from Instagram API, got {type(stories)}: {stories}")
+                return 0, summary
+
+            story_items = [story for story in stories if isinstance(story, dict)]
+
+            def _story_timestamp(item: Dict) -> int:
+                value = item.get('taken_at') or 0
+                try:
+                    return int(value)
+                except (TypeError, ValueError):
+                    return 0
+
+            story_items.sort(key=_story_timestamp)
+            summary['fetched'] = len(story_items)
+
+            story_ids_in_api = {
+                str(story.get('pk') or story.get('id'))
+                for story in story_items
+                if (story.get('pk') or story.get('id'))
+            }
+
+            archived_ids = self.archive_manager.get_archived_story_ids(username)
+            stats = self.archive_manager.get_statistics(username)
+            archived_stories = stats.get('stories', [])
+            posted_ids = {
+                str(s.get('story_id'))
+                for s in archived_stories
+                if isinstance(s, dict) and s.get('tweet_ids')
+            }
+
+            summary['already_archived'] = len(story_ids_in_api & archived_ids)
+            summary['already_posted'] = len(story_ids_in_api & posted_ids)
+
+            processed_count = 0
+
+            if not story_items:
+                logger.info(f"No active stories available for {username} at this time")
+
+            for i, story in enumerate(story_items):
+                story_id = story.get('pk') or story.get('id')
+                if not story_id:
+                    logger.debug(f"Skipping story {i} without an ID")
+                    continue
+
+                story_id_str = str(story_id)
+                logger.info(f"Processing story {i + 1}/{len(story_items)} for {username}: {story_id_str}")
+
+                if story_id_str in archived_ids:
+                    logger.info(f"Story {story_id_str} already archived for {username}, skipping")
+                    continue
+
+                success = self.archive_story(username, story_id_str, story_payload=story)
+                logger.info(f"Story {story_id_str} archiving result for {username}: {success}")
+
+                if success:
+                    processed_count += 1
+                    archived_ids.add(story_id_str)
+
+            cache_only_added = self._sync_cache_only_stories(username, story_ids_in_api)
+            if cache_only_added:
+                processed_count += cache_only_added
+                logger.info(
+                    f"Backfilled {cache_only_added} story(ies) already present in media_cache but missing from archive.json for {username}"
+                )
+
+            logger.info(f"Story check completed for {username}")
+            logger.info(f"New stories archived for {username}: {processed_count}")
+
+            summary['new_archived'] = processed_count
+            return processed_count, summary
+
+        except Exception as e:
+            summary['fetch_failed'] = 1
+            logger.error(f"Error archiving stories for {username}: {e}", exc_info=True)
+            return 0, summary
+
     def archive_all_stories_for_user(self, username: str) -> int:
         """Fetch and archive all available stories for the given username."""
         username = username.strip().lstrip('@')
@@ -508,6 +609,18 @@ class StoryArchiver:
         for username in self.config.INSTAGRAM_USERNAMES:
             total_processed += self.archive_all_stories_for_user(username)
         return total_processed
+
+    def archive_all_stories_with_summary(self) -> Tuple[int, Dict[str, Dict[str, int]]]:
+        """Fetch and archive stories and return a per-user summary for notifications."""
+        total_processed = 0
+        per_user: Dict[str, Dict[str, int]] = {}
+
+        for username in self.config.INSTAGRAM_USERNAMES:
+            processed, summary = self.archive_all_stories_for_user_with_summary(username)
+            total_processed += processed
+            per_user[username.strip().lstrip('@')] = summary
+
+        return total_processed, per_user
 
     def archive_only(self) -> int:
         """Archive all available stories but DO NOT post them (for testing/debugging)."""
@@ -751,7 +864,7 @@ class StoryArchiver:
                     # Upload all media in batch
                     media_ids = []
                     for path in batch_paths:
-                        media_id = self.twitter_api.upload_media(path)
+                        media_id = self.twitter_api.upload_media(path, username=username)
                         if media_id:
                             media_ids.append(media_id)
 
@@ -769,6 +882,7 @@ class StoryArchiver:
                         text=tweet_text,
                         media_ids=media_ids,
                         reply_to_id=last_tweet_id,
+                        username=username,
                     )
 
                     if not tweet_id:

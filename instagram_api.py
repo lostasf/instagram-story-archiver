@@ -80,17 +80,13 @@ class InstagramAPI:
             
             stories = self._parse_story_items(story_data)
             logger.info(f"Found {len(stories)} active stories for {username}")
-            
-            # Notify Discord about successful fetch
-            if self.discord:
-                self.discord.notify_instagram_fetch_success(username, len(stories))
-            
+
             # Debug: Log details about each story found
             for i, story in enumerate(stories):
                 story_id = story.get('pk') or story.get('id')
                 taken_at = story.get('taken_at', 'unknown')
                 logger.info(f"Story {i+1}: ID={story_id}, taken_at={taken_at}")
-            
+
             return stories
             
         except requests.exceptions.RequestException as e:
@@ -99,19 +95,23 @@ class InstagramAPI:
             
             # Notify Discord about Instagram API failure
             if self.discord:
+                status_code = None
                 response_text = None
+
                 if hasattr(e, 'response') and e.response is not None:
+                    status_code = getattr(e.response, 'status_code', None)
                     try:
                         response_text = e.response.text[:1000]
-                    except:
+                    except Exception:
                         response_text = str(e.response)[:1000]
-                
+
                 self.discord.notify_instagram_fetch_error(
                     username=username,
                     error=str(e),
-                    response_data=response_text
+                    status_code=status_code,
+                    response_data=response_text,
                 )
-            
+
             return None
     
     def get_story_by_id(self, username: str, story_id: str) -> Optional[Dict]:
