@@ -79,6 +79,8 @@ class DiscordNotifier:
             return True
         except RequestException as e:
             logger.error(f"Failed to send Discord notification: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Discord API Response: {e.response.text}")
             return False
 
     def _send_success_embed(
