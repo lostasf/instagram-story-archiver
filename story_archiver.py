@@ -630,7 +630,7 @@ class StoryArchiver:
         logger.info(f"Archive-only completed: {total_processed} stories archived")
         return total_processed
 
-    def post_pending_stories(self) -> int:
+    def post_pending_stories(self) -> Tuple[int, int]:
         """Post all pending stories that have been archived but not yet posted to Twitter.
 
         Logic:
@@ -639,8 +639,12 @@ class StoryArchiver:
         3. Post those stories to Twitter (one tweet per story, multi-media batching within story)
         4. After posting, update metadata and delete media files
         5. Log stories uploaded on the same day as planned for next day
+
+        Returns:
+            Tuple of (total_posted, total_failed) counts
         """
         total_posted = 0
+        total_failed = 0
 
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -709,11 +713,13 @@ class StoryArchiver:
                     total_posted += 1
                 else:
                     logger.error(f"Failed to post story {story_id} for {username}")
+                    total_failed += 1
 
         logger.info(f"Total stories posted: {total_posted}")
-        return total_posted
+        logger.info(f"Total stories failed: {total_failed}")
+        return total_posted, total_failed
 
-    def post_pending_stories_daily(self) -> int:
+    def post_pending_stories_daily(self) -> Tuple[int, int]:
         """Post pending stories grouped by day to avoid spamming.
 
         Logic:
@@ -723,8 +729,12 @@ class StoryArchiver:
         4. For each day's stories, combine all media into batches of 4
         5. Post each batch as a tweet in a thread (one thread per day)
         6. Mark all stories as posted
+
+        Returns:
+            Tuple of (total_posted, total_failed) counts
         """
         total_posted = 0
+        total_failed = 0
 
         now = datetime.now(timezone(timedelta(hours=7)))
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -773,6 +783,9 @@ class StoryArchiver:
             for date_key, day_stories in sorted(stories_by_date.items()):
                 logger.info(f"Processing stories for {username} from {date_key}: {len(day_stories)} stories")
 
+                # Track if we've already counted failures for this day
+                day_failed = False
+
                 # Sort stories by taken_at (oldest first)
                 day_stories.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
@@ -780,6 +793,8 @@ class StoryArchiver:
                 anchor_id = self._ensure_anchor_tweet(username)
                 if not anchor_id:
                     logger.error(f"Cannot process day {date_key} for {username} without anchor tweet")
+                    total_failed += len(day_stories)
+                    day_failed = True
                     continue
 
                 # Collect all media paths from all stories
@@ -845,6 +860,9 @@ class StoryArchiver:
 
                 if not all_media_paths:
                     logger.warning(f"No media available for day {date_key} for {username}")
+                    if not day_failed:
+                        total_failed += len(day_stories)
+                        day_failed = True
                     continue
 
                 logger.info(f"Collected {len(all_media_paths)} media items for day {date_key}")
@@ -869,6 +887,9 @@ class StoryArchiver:
 
                     if not media_ids:
                         logger.error(f"Failed to upload media batch {idx + 1} for day {date_key}")
+                        if not day_failed:
+                            total_failed += len(day_stories)
+                            day_failed = True
                         continue
 
                     # Add batch info to caption if there are multiple batches
@@ -886,6 +907,9 @@ class StoryArchiver:
 
                     if not tweet_id:
                         logger.error(f"Failed to post tweet for batch {idx + 1} of day {date_key}")
+                        if not day_failed:
+                            total_failed += len(day_stories)
+                            day_failed = True
                         break
 
                     tweet_ids.append(tweet_id)
@@ -894,6 +918,9 @@ class StoryArchiver:
 
                 if not tweet_ids:
                     logger.error(f"Failed to post any tweets for day {date_key} for {username}")
+                    if not day_failed:
+                        total_failed += len(day_stories)
+                        day_failed = True
                     continue
 
                 # Mark all stories as posted
@@ -916,7 +943,8 @@ class StoryArchiver:
                 total_posted += len(all_story_ids)
 
         logger.info(f"Total stories posted: {total_posted}")
-        return total_posted
+        logger.info(f"Total stories failed: {total_failed}")
+        return total_posted, total_failed
 
     def log_pending_story_count(self) -> int:
         """Log how many pending stories are currently in the archive."""
