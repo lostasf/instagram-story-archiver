@@ -46,6 +46,9 @@ jobs:
           DISCORD_WEBHOOK_FAILURE_URL: ${{ secrets.DISCORD_WEBHOOK_FAILURE_URL }}
           ARCHIVE_DB_PATH: ./archive.json
           MEDIA_CACHE_DIR: ./media_cache
+          # Proxy configuration to prevent Cloudflare blocking
+          HTTP_PROXY: ${{ secrets.PROXY_URL }}
+          HTTPS_PROXY: ${{ secrets.PROXY_URL }}
         run: python main.py --post-daily
 
       - name: Upload logs

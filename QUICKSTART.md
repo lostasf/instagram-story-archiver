@@ -23,6 +23,7 @@ TWITTER_API_SECRET=your_secret
 TWITTER_ACCESS_TOKEN=your_token
 TWITTER_ACCESS_SECRET=your_secret
 TWITTER_BEARER_TOKEN=your_bearer_token
+PROXY_URL=http://proxy.example.com:8080  # Optional: Prevent Cloudflare blocking
 ```
 
 Add this **Variable**:
@@ -213,6 +214,13 @@ cat .env | grep -E "RAPIDAPI_KEY|TWITTER_"
 ```bash
 # Verify credentials in .env are correct
 python test_setup.py
+```
+
+### "Cloudflare blocking / 403 errors"
+```bash
+# Add PROXY_URL secret to GitHub Actions
+# Go to Settings → Secrets and variables → Actions
+# Add PROXY_URL with your proxy server URL
 ```
 
 ### "No stories to post"

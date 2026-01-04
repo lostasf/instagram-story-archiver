@@ -33,6 +33,7 @@ Go to **Settings → Secrets and variables → Actions** and add:
 - `TWITTER_ACCESS_TOKEN` - Twitter Access Token
 - `TWITTER_ACCESS_SECRET` - Twitter Access Token Secret
 - `TWITTER_BEARER_TOKEN` - Twitter Bearer Token
+- `PROXY_URL` - (Optional) Proxy URL to prevent Cloudflare blocking (e.g., `http://proxy.example.com:8080`)
 
 **Variables:**
 - `INSTAGRAM_USERNAME` - `jkt48.gendis` (single username; also accepts comma-separated list for backward compatibility)
