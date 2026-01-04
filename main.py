@@ -132,6 +132,9 @@ def main() -> None:
         logger.info(f'Starting archive check at {datetime.now()}')
         logger.info(f"Watching Instagram accounts: {', '.join(config.INSTAGRAM_USERNAMES)}")
 
+        # Initialize failure counter
+        new_failed = 0
+
         # Post only (no archiving)
         if args.post_daily:
             logger.info('Running in daily post mode...')
@@ -147,8 +150,9 @@ def main() -> None:
                     1 for s in stories if isinstance(s, dict) and s.get('tweet_ids')
                 )
 
-            new_posted = archiver.post_pending_stories_daily()
+            new_posted, new_failed = archiver.post_pending_stories_daily()
             logger.info(f'Posted {new_posted} stories from previous days')
+            logger.info(f'Failed to post {new_failed} stories from previous days')
 
             after_posted_counts = {}
             for username in config.INSTAGRAM_USERNAMES:
@@ -183,6 +187,12 @@ def main() -> None:
             archiver.log_pending_story_count()
             archiver.print_status()
             logger.info('Daily post check completed')
+
+            # Exit with error code if any posts failed
+            if new_failed > 0:
+                logger.error(f'❌ {new_failed} stories failed to post. Check logs for details.')
+                sys.exit(1)
+
             return
 
         # Archive (always do this unless --post-daily)
@@ -199,8 +209,9 @@ def main() -> None:
 
         if not args.fetch_only and not args.archive_only:
             logger.info('Checking for pending stories to post...')
-            new_posted = archiver.post_pending_stories()
+            new_posted, new_failed = archiver.post_pending_stories()
             logger.info(f'Posted {new_posted} pending stories')
+            logger.info(f'Failed to post {new_failed} pending stories')
         elif args.fetch_only:
             logger.info('Skipping post step (--fetch-only)')
         elif args.archive_only:
@@ -209,6 +220,11 @@ def main() -> None:
         archiver.log_pending_story_count()
         archiver.print_status()
         logger.info('Archive check completed')
+
+        # Exit with error code if any posts failed (for non-daily posting)
+        if not args.fetch_only and not args.archive_only and new_failed > 0:
+            logger.error(f'❌ {new_failed} stories failed to post. Check logs for details.')
+            sys.exit(1)
 
         if os.getenv('GITHUB_ACTIONS'):
             if args.fetch_only and fetch_summary is not None:
