@@ -24,13 +24,34 @@
           ]
         }
       ],
-      "last_check": "2026-01-04T08:25:46.449694",
+      "last_check": "2026-01-04T16:22:27.854800",
       "anchor_tweet_id": "2007502196833718272",
       "last_tweet_id": "2007502209143967982"
     },
     "jkt48.lana.a": {
-      "archived_stories": [],
-      "last_check": "2026-01-04T08:25:47.017562",
+      "archived_stories": [
+        {
+          "story_id": "3802722880040685576",
+          "instagram_username": "jkt48.lana.a",
+          "archived_at": "2026-01-04T16:22:32.538003",
+          "uploadTime": 1767539912,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fssa14-1.fna.fbcdn.net/v/t51.82787-15/611248630_17944186326095837_5445396840687314983_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=101&ig_cache_key=MzgwMjcyMjg4MDA0MDY4NTU3Ng%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjEyODR4MjI4Mi5zZHIuQzMifQ%3D%3D&_nc_ohc=CAJukYsU3zoQ7kNvwF2F0dP&_nc_oc=AdnIbFTnu9qy0mb6L8vrZqJLHDVWkKqa_UxwLw7MiPxzigSCgoSbkzSx7vlOuNwaNv4&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fssa14-1.fna&_nc_gid=uTjo-NmnLx0zD-BcZVdjxQ&oh=00_AfoJQOcvyPjUFh0DF53DMvdKM4MtSxYXThF2xPaFxCZwhA&oe=69604F50"
+          ],
+          "taken_at": 1767539912,
+          "local_media_path": "./media_cache/jkt48.lana.a_3802722880040685576_0.jpg",
+          "media_type": "image",
+          "local_media_paths": [
+            "./media_cache/jkt48.lana.a_3802722880040685576_0.jpg"
+          ],
+          "media_types": [
+            "image"
+          ]
+        }
+      ],
+      "last_check": "2026-01-04T16:22:29.915160",
       "anchor_tweet_id": null,
       "last_tweet_id": null
     }
