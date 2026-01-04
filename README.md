@@ -111,10 +111,10 @@ This project uses **two separate GitHub Actions workflows** for optimal automati
 1. **Check Instagram**: API queries all configured Instagram accounts for new stories
 2. **Download Media**: Images/videos from stories are downloaded and saved to `media_cache/`
 3. **Optimize**: Images are compressed to meet Twitter's 5MB limit
-4. **Archive**: Story metadata and local file paths are stored in `archive.json` with `uploadTime` field (from Instagram's `taken_at`)
+4. **Archive**: Story metadata and local file paths are stored in `archive.json` with `taken_at` field (from Instagram's API)
 
 **Posting Stage** (runs daily at 00:00 UTC+7):
-1. **Check Eligible Stories**: Stories where `uploadTime < today` (UTC+7) and `tweet_ids` is empty
+1. **Check Eligible Stories**: Stories where `taken_at < today` (UTC+7) and `tweet_ids` is empty
 2. **Group by Day**: All stories from the same day are grouped together
 3. **Batch Media**: Up to 4 media items (images or videos) per tweet to minimize tweets
 4. **Post to Thread**: Creates/replies to thread with progress indicators like `(1/2)`, `(2/2)`
@@ -202,7 +202,7 @@ Each Instagram account gets its own thread:
 ```
 
 **Important fields for posting logic:**
-- `taken_at`: Unix timestamp from Instagram API (stored as `uploadTime` internally)
+- `taken_at`: Unix timestamp from Instagram API - used for "next day" posting logic
 - `tweet_ids`: Empty array `[]` means story hasn't been posted yet
 - Stories are only posted if `taken_at < today` (UTC+7) and `tweet_ids` is empty
 

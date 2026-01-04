@@ -80,7 +80,6 @@ class StoryArchiver:
                 return False
 
             taken_at = int(story_data.get('taken_at', 0) or 0)
-            uploadTime = taken_at  # uploadTime is the same as taken_at from Instagram API
             media_list = self.instagram_api.extract_media_urls(story_data)
             if not media_list:
                 logger.warning(f"No media found in story {story_id}")
@@ -121,7 +120,6 @@ class StoryArchiver:
 
             # Save to archive with all media paths
             archive_data = {
-                'uploadTime': uploadTime,
                 'media_count': len(media_list),
                 'media_urls': [m['url'] for m in media_list],
                 'tweet_ids': [],  # Not posted yet
@@ -410,7 +408,6 @@ class StoryArchiver:
             taken_at = int(min(os.path.getmtime(p) for p in local_media_paths))
 
             archive_data = {
-                'uploadTime': taken_at,
                 'media_count': len(local_media_paths),
                 'media_urls': [],
                 'tweet_ids': [],
@@ -638,7 +635,7 @@ class StoryArchiver:
 
         Logic:
         1. Get current date in GMT+7 timezone
-        2. Find stories with empty tweet_ids AND uploadTime < today (before today)
+        2. Find stories with empty tweet_ids AND taken_at < today (before today)
         3. Post those stories to Twitter (one tweet per story, multi-media batching within story)
         4. After posting, update metadata and delete media files
         5. Log stories uploaded on the same day as planned for next day
@@ -655,24 +652,24 @@ class StoryArchiver:
             stories = stats.get('stories', [])
 
             # Separate stories into two groups:
-            # - Stories to post: uploaded before today (uploadTime < today_start)
-            # - Stories planned for tomorrow: uploaded today (uploadTime >= today_start)
+            # - Stories to post: uploaded before today (taken_at < today_start)
+            # - Stories planned for tomorrow: uploaded today (taken_at >= today_start)
             stories_to_post = []
             stories_planned = []
 
             for story in stories:
                 # Only consider unposted stories (no tweet_ids)
                 if not story.get('tweet_ids'):
-                    uploadTime = story.get('uploadTime') or story.get('taken_at')
-                    if uploadTime is None:
-                        logger.warning(f"Story {story.get('story_id')} has no uploadTime/taken_at, skipping")
+                    taken_at_val = story.get('taken_at')
+                    if taken_at_val is None:
+                        logger.warning(f"Story {story.get('story_id')} has no taken_at, skipping")
                         continue
 
                     try:
-                        uploadTime_int = int(uploadTime)
-                        upload_datetime = datetime.fromtimestamp(uploadTime_int, tz=timezone(timedelta(hours=7)))
+                        taken_at_int = int(taken_at_val)
+                        upload_datetime = datetime.fromtimestamp(taken_at_int, tz=timezone(timedelta(hours=7)))
                     except (ValueError, TypeError) as e:
-                        logger.warning(f"Invalid uploadTime for story {story.get('story_id')}: {e}, skipping")
+                        logger.warning(f"Invalid taken_at for story {story.get('story_id')}: {e}, skipping")
                         continue
 
                     # Check if story was uploaded before today or today
@@ -689,18 +686,18 @@ class StoryArchiver:
             if stories_planned:
                 planned_count = len(stories_planned)
                 logger.info(f"Stories uploaded today for {username}: {planned_count} (planned for next day)")
-                for story in sorted(stories_planned, key=lambda x: int(x.get('uploadTime', 0) or 0)):
+                for story in sorted(stories_planned, key=lambda x: int(x.get('taken_at', 0) or 0)):
                     story_id = story.get('story_id')
-                    uploadTime = story.get('uploadTime')
-                    upload_datetime = datetime.fromtimestamp(int(uploadTime), tz=timezone(timedelta(hours=7)))
+                    taken_at_val = story.get('taken_at')
+                    upload_datetime = datetime.fromtimestamp(int(taken_at_val), tz=timezone(timedelta(hours=7)))
                     logger.info(f"  - Story {story_id} uploaded at {upload_datetime} (planned for next day)")
 
             if not stories_to_post:
                 logger.info(f"No stories to post for {username} (all uploaded today)")
                 continue
 
-            # Sort stories to post by uploadTime (oldest first)
-            stories_to_post.sort(key=lambda x: int(x.get('uploadTime', 0) or 0))
+            # Sort stories to post by taken_at (oldest first)
+            stories_to_post.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
             logger.info(f"Found {len(stories_to_post)} stories to post for {username}")
 
@@ -721,7 +718,7 @@ class StoryArchiver:
 
         Logic:
         1. Get current date in GMT+7 timezone
-        2. Find stories with empty tweet_ids AND uploadTime before today
+        2. Find stories with empty tweet_ids AND taken_at before today
         3. Group stories by their upload date
         4. For each day's stories, combine all media into batches of 4
         5. Post each batch as a tweet in a thread (one thread per day)
@@ -742,16 +739,16 @@ class StoryArchiver:
             stories_to_post = []
             for story in stories:
                 if not story.get('tweet_ids'):
-                    uploadTime = story.get('uploadTime') or story.get('taken_at')
-                    if uploadTime is None:
-                        logger.warning(f"Story {story.get('story_id')} has no uploadTime/taken_at, skipping")
+                    taken_at_val = story.get('taken_at')
+                    if taken_at_val is None:
+                        logger.warning(f"Story {story.get('story_id')} has no taken_at, skipping")
                         continue
 
                     try:
-                        uploadTime_int = int(uploadTime)
-                        upload_datetime = datetime.fromtimestamp(uploadTime_int, tz=timezone(timedelta(hours=7)))
+                        taken_at_int = int(taken_at_val)
+                        upload_datetime = datetime.fromtimestamp(taken_at_int, tz=timezone(timedelta(hours=7)))
                     except (ValueError, TypeError) as e:
-                        logger.warning(f"Invalid uploadTime for story {story.get('story_id')}: {e}, skipping")
+                        logger.warning(f"Invalid taken_at for story {story.get('story_id')}: {e}, skipping")
                         continue
 
                     # Check if story was uploaded before today
@@ -765,8 +762,8 @@ class StoryArchiver:
             # Group stories by upload date
             stories_by_date = {}
             for story in stories_to_post:
-                uploadTime = int(story.get('uploadTime') or story.get('taken_at', 0))
-                upload_datetime = datetime.fromtimestamp(uploadTime, tz=timezone(timedelta(hours=7)))
+                taken_at_val = int(story.get('taken_at', 0))
+                upload_datetime = datetime.fromtimestamp(taken_at_val, tz=timezone(timedelta(hours=7)))
                 date_key = upload_datetime.strftime('%Y-%m-%d')
                 stories_by_date.setdefault(date_key, []).append(story)
 
@@ -776,8 +773,8 @@ class StoryArchiver:
             for date_key, day_stories in sorted(stories_by_date.items()):
                 logger.info(f"Processing stories for {username} from {date_key}: {len(day_stories)} stories")
 
-                # Sort stories by uploadTime (oldest first)
-                day_stories.sort(key=lambda x: int(x.get('uploadTime', 0) or 0))
+                # Sort stories by taken_at (oldest first)
+                day_stories.sort(key=lambda x: int(x.get('taken_at', 0) or 0))
 
                 # Ensure anchor tweet
                 anchor_id = self._ensure_anchor_tweet(username)
@@ -854,7 +851,7 @@ class StoryArchiver:
 
                 # Get caption for the first story (they're all from the same day)
                 first_story = day_stories[0]
-                taken_at = int(first_story.get('uploadTime') or first_story.get('taken_at', 0))
+                taken_at = int(first_story.get('taken_at', 0))
                 caption = self.config.get_story_caption(username, taken_at)
 
                 # Post media in batches of 4

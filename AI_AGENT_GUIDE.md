@@ -38,9 +38,9 @@ This document helps AI agents quickly understand and work with this codebase.
 ### Timezone Logic (CRITICAL)
 
 All posting logic uses **UTC+7 timezone**:
-- Instagram's `uploadTime` is Unix timestamp (UTC)
+- Instagram's `taken_at` is Unix timestamp (UTC)
 - Convert to UTC+7 to determine "previous days"
-- Stories where `uploadTime < today (UTC+7)` are eligible for posting
+- Stories where `taken_at < today (UTC+7)` are eligible for posting
 - Stories uploaded today (UTC+7) are NOT posted until tomorrow
 
 Example:
@@ -62,7 +62,7 @@ Example:
       "archived_stories": [
         {
           "story_id": "...",
-          "uploadTime": 1705305600,  // Unix timestamp (UTC) - KEY FIELD
+          "taken_at": 1705305600,  // Unix timestamp (UTC) - KEY FIELD
           "tweet_ids": [],  // Empty = not posted yet
           "local_media_paths": ["..."],  // Downloaded media files
           "media_types": ["image", "video"],
@@ -75,7 +75,7 @@ Example:
 ```
 
 **Key fields**:
-- `uploadTime`: Unix timestamp from Instagram API (UTC) - determines posting eligibility
+- `taken_at`: Unix timestamp from Instagram API (UTC) - determines posting eligibility
 - `tweet_ids`: Array of tweet IDs (empty = not posted)
 - `local_media_paths`: Array of downloaded media file paths
 - `media_types`: Array of media types ("image" or "video")
@@ -85,7 +85,7 @@ Example:
 Twitter allows up to 4 media items per tweet (images or videos).
 
 **Posting flow**:
-1. Group stories by day (using `uploadTime` in UTC+7)
+1. Group stories by day (using `taken_at` in UTC+7)
 2. For each day:
    - Create/reply to anchor tweet
    - Batch up to 4 media items per tweet
@@ -236,7 +236,7 @@ python main.py --story-id <story_id> --username <username>
 ### "No stories to post"
 - Normal if all stories have already been posted
 - Check `archive.json` for `tweet_ids` (empty = not posted)
-- Check `uploadTime` timestamps - stories from today (UTC+7) won't post until tomorrow
+- Check `taken_at` timestamps - stories from today (UTC+7) won't post until tomorrow
 
 ### "Rate limit exceeded"
 - Increase archive workflow interval

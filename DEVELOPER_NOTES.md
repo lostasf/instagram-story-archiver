@@ -127,7 +127,7 @@ If story has 5 media items:
           "story_id": "2921414441985452983",
           "instagram_username": "jkt48.gendis",
           "archived_at": "2024-01-15T10:30:00.123456",
-          "uploadTime": 1705305600,  // Unix timestamp (UTC) - same as taken_at
+          "taken_at": 1705305600,  // Unix timestamp (UTC) - when the story was uploaded to Instagram
           "media_count": 3,
           "media_urls": ["url1", "url2", "url3"],
           "local_media_path": "path1.jpg",  // Legacy field (single path)
@@ -143,7 +143,7 @@ If story has 5 media items:
 ```
 
 **Key fields**:
-- `uploadTime` (or `taken_at`): Unix timestamp from Instagram API (UTC) - used for "next day" posting logic
+- `taken_at`: Unix timestamp from Instagram API (UTC) - used for "next day" posting logic
 - `tweet_ids`: Array of tweet IDs (empty = not posted yet)
 - `local_media_paths`: Array of downloaded media file paths (preferred over legacy `local_media_path`)
 - `media_types`: Array of media types ("image" or "video") (preferred over legacy `media_type`)
