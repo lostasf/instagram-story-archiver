@@ -339,111 +339,95 @@ class TwitterAPI:
     ) -> Optional[str]:
         """
         Post a tweet with optional media and reply thread support.
+        Includes retry logic with exponential backoff.
         Returns tweet ID if successful.
         """
-        try:
-            logger.info(f"Posting tweet: {text[:100]}...")
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                logger.info(f"Posting tweet (Attempt {attempt + 1}/{max_attempts}): {text[:100]}...")
 
-            response = self.client.create_tweet(
-                text=text,
-                media_ids=media_ids,
-                in_reply_to_tweet_id=reply_to_id
-            )
-
-            tweet_id = response.data['id']
-            logger.info(f"Tweet posted successfully. ID: {tweet_id}")
-            return tweet_id
-
-        except tweepy.Forbidden as e:
-            error_msg = str(e)
-            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
-
-            logger.error(f"Twitter API Permission Error (403 Forbidden): {e}")
-            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
-
-            diagnosis = self._diagnose_403_error(response_text)
-            logger.error(diagnosis)
-
-            logger.error("")
-            logger.error("TO FIX THIS ISSUE (if it is a permission problem):")
-            logger.error("1. Go to https://developer.twitter.com/en/portal/dashboard")
-            logger.error("2. Select your app")
-            logger.error("3. Go to 'Settings' > 'App permissions'")
-            logger.error("4. Change permissions from 'Read' to 'Read and Write'")
-            logger.error("5. Go to 'Settings' > 'User authentication settings'")
-            logger.error("6. Make sure OAuth 1.0a is enabled with 'Read and Write' permissions")
-            logger.error("7. CRITICAL: After changing permissions, go to 'Keys and tokens'")
-            logger.error("8. Click 'Regenerate' for BOTH Access Token and Access Token Secret")
-            logger.error("9. Copy the NEW tokens and update your GitHub Actions secrets")
-            logger.error("")
-            logger.error("⚠️  THE OLD TOKENS WON'T WORK WITH NEW PERMISSIONS!")
-            logger.error("⚠️  YOU MUST REGENERATE THEM AFTER CHANGING PERMISSIONS!")
-
-            # Notify Discord about Twitter 403 error
-            if self.discord:
-                self.discord.notify_twitter_post_error(
-                    username=username,
-                    error=diagnosis,
-                    status_code=getattr(e.response, 'status_code', 403) if hasattr(e, 'response') else 403,
-                    response_text=response_text,
+                response = self.client.create_tweet(
+                    text=text,
+                    media_ids=media_ids,
+                    in_reply_to_tweet_id=reply_to_id
                 )
 
-            return None
+                tweet_id = response.data['id']
+                logger.info(f"Tweet posted successfully. ID: {tweet_id}")
+                return tweet_id
 
-        except tweepy.Unauthorized as e:
-            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
-            logger.error(f"Twitter API Authentication Error (401 Unauthorized): {e}")
-            logger.error(f"Response: {response_text[:1000] if response_text else 'N/A'}")
-            logger.error("Your access tokens may be invalid or expired.")
-            logger.error("Try regenerating your Access Token and Secret in the Twitter Developer Portal.")
-
-            if self.discord:
-                self.discord.notify_twitter_post_error(
-                    username=username,
-                    error=str(e),
-                    status_code=getattr(e.response, 'status_code', 401) if hasattr(e, 'response') else 401,
-                    response_text=response_text,
-                )
-
-            return None
-
-        except Exception as e:
-            error_msg = str(e).lower()
-            response_text = e.response.text if hasattr(e, 'response') else 'N/A'
-
-            # Check for specific OAuth 1.0a permission errors (legacy)
-            if "oauth1 app permissions" in error_msg or "403" in error_msg:
-                logger.error(f"Twitter error: {e}")
+            except (tweepy.Forbidden, tweepy.TwitterServerError, Exception) as e:
+                status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
+                response_text = getattr(e.response, 'text', 'N/A') if hasattr(e, 'response') else 'N/A'
                 
-                diagnosis = self._diagnose_403_error(response_text) if "403" in error_msg else f"OAuth permission error: {e}"
-                logger.error(diagnosis)
+                # Check if we should retry: 403 Forbidden or any other Exception
+                is_forbidden = isinstance(e, tweepy.Forbidden) or status_code == 403
                 
-                logger.error("Please check your Twitter Developer Portal app settings:")
-                logger.error("1. Go to your app's 'App permissions' section")
-                logger.error("2. Set permissions to 'Read and Write'")
-                logger.error("3. Regenerate your Access Token and Secret after changing permissions")
+                # We retry on 403 (could be transient or permission issue we want to retry anyway as per requirements)
+                # and 5xx (transient server issues)
+                # and general exceptions
                 
-                # Notify Discord
-                if self.discord:
-                    status_code = 403 if "403" in error_msg else None
-                    self.discord.notify_twitter_post_error(
-                        username=username,
-                        error=diagnosis,
-                        status_code=status_code,
-                        response_text=response_text,
-                    )
-            else:
-                logger.error(f"Error posting tweet: {e}")
+                if attempt < max_attempts - 1:
+                    wait_time = 2 ** (attempt + 1)
+                    error_msg = f"Post failed (Attempt {attempt + 1}/{max_attempts}). Retrying in {wait_time}s... Error: {str(e)}"
+                    logger.warning(error_msg)
+                    
+                    if self.discord:
+                        self.discord.notify_twitter_post_error(
+                            username=username,
+                            error=error_msg,
+                            status_code=status_code,
+                            response_text=response_text,
+                            tweet_attempts=attempt + 1
+                        )
+                    
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Final attempt failed
+                    logger.error(f"Failed to post tweet after {max_attempts} attempts.")
+                    if media_ids:
+                        logger.error(f"Orphan Media IDs: {media_ids}")
+                    
+                    if is_forbidden:
+                        diagnosis = self._diagnose_403_error(response_text)
+                        logger.error(diagnosis)
+                        
+                        logger.error("")
+                        logger.error("TO FIX THIS ISSUE (if it is a permission problem):")
+                        logger.error("1. Go to https://developer.twitter.com/en/portal/dashboard")
+                        logger.error("2. Select your app")
+                        logger.error("3. Go to 'Settings' > 'App permissions'")
+                        logger.error("4. Change permissions from 'Read' to 'Read and Write'")
+                        logger.error("5. Go to 'Settings' > 'User authentication settings'")
+                        logger.error("6. Make sure OAuth 1.0a is enabled with 'Read and Write' permissions")
+                        logger.error("7. CRITICAL: After changing permissions, go to 'Keys and tokens'")
+                        logger.error("8. Click 'Regenerate' for BOTH Access Token and Access Token Secret")
+                        logger.error("9. Copy the NEW tokens and update your GitHub Actions secrets")
+                        logger.error("")
+                        logger.error("⚠️  THE OLD TOKENS WON'T WORK WITH NEW PERMISSIONS!")
+                        logger.error("⚠️  YOU MUST REGENERATE THEM AFTER CHANGING PERMISSIONS!")
 
-                # Notify Discord about other Twitter errors
-                if self.discord:
-                    self.discord.notify_twitter_post_error(
-                        username=username,
-                        error=f"Twitter Error: {e}",
-                        response_text=response_text,
-                    )
-
-            return None
+                        if self.discord:
+                            self.discord.notify_twitter_post_error(
+                                username=username,
+                                error=diagnosis,
+                                status_code=status_code or 403,
+                                response_text=response_text,
+                                tweet_attempts=max_attempts
+                            )
+                    else:
+                        logger.error(f"Error posting tweet: {e}")
+                        if self.discord:
+                            self.discord.notify_twitter_post_error(
+                                username=username,
+                                error=f"Twitter Error after {max_attempts} attempts: {e}",
+                                status_code=status_code,
+                                response_text=response_text,
+                                tweet_attempts=max_attempts
+                            )
+                    return None
     
     def create_thread(self, posts: List[dict]) -> List[str]:
         """
