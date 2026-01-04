@@ -46,6 +46,9 @@ Go to **Settings → Secrets and variables → Actions** and add the following s
 - `DISCORD_WEBHOOK_SUCCESS_URL` - Webhook URL for the success/info channel
 - `DISCORD_WEBHOOK_FAILURE_URL` - Webhook URL for the failure/errors channel
 
+#### Proxy Configuration (optional, recommended for Cloudflare blocking)
+- `PROXY_URL` - Proxy URL to prevent Cloudflare blocking (e.g., `http://proxy.example.com:8080`)
+
 ### 2. Add Repository Variables
 
 Go to **Settings → Secrets and variables → Variables** and add:
@@ -284,6 +287,28 @@ Add to either workflow:
     webhook_url: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
+### Proxy Configuration
+
+To prevent Cloudflare blocking, configure a proxy:
+
+1. **Add PROXY_URL secret**:
+   - Go to **Settings → Secrets and variables → Actions**
+   - Add secret `PROXY_URL` with your proxy server URL (e.g., `http://proxy.example.com:8080`)
+
+2. **Workflow configuration**:
+   The workflows automatically use the proxy via `HTTP_PROXY` and `HTTPS_PROXY` environment variables:
+
+   ```yaml
+   env:
+     HTTP_PROXY: ${{ secrets.PROXY_URL }}
+     HTTPS_PROXY: ${{ secrets.PROXY_URL }}
+   ```
+
+3. **Proxy requirements**:
+   - Use a reliable proxy service
+   - Ensure the proxy supports HTTPS
+   - Test the proxy connection before deploying
+
 ## Maintenance
 
 ### Update Dependencies
@@ -384,6 +409,10 @@ The `archive.json` file grows over time. GitHub has size limits for individual f
 ### Q: What if credentials change?
 
 **A**: Update secrets in Settings → Secrets and variables → Actions
+
+### Q: How to prevent Cloudflare blocking?
+
+**A**: Configure a proxy by adding a `PROXY_URL` secret with your proxy server URL. The workflows will automatically route traffic through the proxy to avoid Cloudflare IP blocking.
 
 ## Support
 
