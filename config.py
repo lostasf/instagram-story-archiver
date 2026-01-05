@@ -108,9 +108,22 @@ class Config:
         dt = datetime.fromtimestamp(taken_at_timestamp, tz=utc_plus_7)
         date_str = dt.strftime("%d/%m/%Y")
 
+        # Indonesian day and month names
+        day_names = {
+            0: "Senin", 1: "Selasa", 2: "Rabu", 3: "Kamis", 
+            4: "Jumat", 5: "Sabtu", 6: "Minggu"
+        }
+        month_names = {
+            1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+            5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+            9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+        }
+        
+        formatted_date = f"{day_names[dt.weekday()]}, {dt.day:02d} {month_names[dt.month]} {dt.year}"
+
         # Specific requirements for Gendis and Lana
         if 'gendis' in username.lower():
-            return f"Instagram Story Gendis\n{date_str}\n\n#Mantrajiva"
+            return f"✦ Gendis Instagram Story ✦\n{formatted_date}\n\n#MantraJiva"
         
         if 'lana' in username.lower():
             # Matches 'lana' or 'jkt48.lana.a'
