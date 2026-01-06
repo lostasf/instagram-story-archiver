@@ -301,15 +301,19 @@ class StoryArchiver:
             self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
             self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
             
-            # Cleanup media files after successful posting
-            for media_path in media_paths:
-                if media_path and os.path.exists(media_path):
-                    self.media_manager.cleanup_media(media_path)
-            
-            # Clear local paths in archive
-            self.archive_manager.update_story_local_paths(username, story_id, [])
-
-            logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
+            # Only cleanup if ALL batches were successful
+            if len(tweet_ids) == len(media_batches):
+                # Cleanup media files after successful posting
+                for media_path in media_paths:
+                    if media_path and os.path.exists(media_path):
+                        self.media_manager.cleanup_media(media_path)
+                
+                # Clear local paths in archive
+                self.archive_manager.update_story_local_paths(username, story_id, [])
+                logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
+            else:
+                logger.warning(f"Story {story_id} for {username} was only partially posted ({len(tweet_ids)}/{len(media_batches)} batches). Media kept for manual intervention.")
+                return False
             
             # Notify Discord about successful Twitter post (avoid spamming GitHub Actions runs)
             if self.discord and not os.getenv('GITHUB_ACTIONS'):
@@ -323,6 +327,70 @@ class StoryArchiver:
         except Exception as e:
             logger.error(f"Error posting story {story_id}: {e}", exc_info=True)
             return False
+
+    def cleanup_media_cache(self) -> int:
+        """
+        Comprehensive cleanup of media_cache.
+        Deletes files that:
+        1. Belong to stories already marked as posted.
+        2. Do not belong to any story in the archive (orphans).
+        3. Are variants (e.g. original files when compressed exists) - handled by cleanup_media.
+        
+        Keeps files that:
+        1. Belong to stories that are not yet posted (including those planned for tomorrow).
+        """
+        total_cleaned = 0
+        logger.info("Starting comprehensive cleanup of media_cache...")
+
+        # Build a set of all media paths currently referenced by unposted stories
+        needed_media_ids = set()
+        
+        for username in self.config.INSTAGRAM_USERNAMES:
+            username = username.strip().lstrip('@')
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+            for story in stories:
+                if not story.get('tweet_ids'):
+                    story_id = str(story.get('story_id'))
+                    needed_media_ids.add(f"{username}_{story_id}")
+
+        cache_dir = self.media_manager.cache_dir
+        try:
+            filenames = os.listdir(cache_dir)
+        except FileNotFoundError:
+            return 0
+
+        for filename in filenames:
+            if filename == '.gitkeep':
+                continue
+            
+            # Extract username and story_id from filename
+            # Format: {username}_{story_id}_{idx}.{ext}
+            # or {username}_{story_id}_{idx}_compressed.jpg
+            stem = filename.rsplit('.', 1)[0]
+            if stem.endswith('_compressed'):
+                stem = stem[:-11] # len('_compressed')
+            
+            parts = stem.split('_')
+            if len(parts) < 3:
+                continue
+            
+            # The last part is idx, the second to last is story_id
+            story_id = parts[-2]
+            # The rest is username (can contain _)
+            username = '_'.join(parts[:-2])
+            
+            prefix = f"{username}_{story_id}"
+            
+            if prefix not in needed_media_ids:
+                file_path = os.path.join(cache_dir, filename)
+                if self.media_manager.cleanup_media(file_path):
+                    total_cleaned += 1
+        
+        if total_cleaned > 0:
+            logger.info(f"Cleaned up {total_cleaned} unneeded media files from cache")
+        
+        return total_cleaned
 
     def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
         """Process a single story immediately: archive and post."""
@@ -960,17 +1028,25 @@ class StoryArchiver:
                 # Update last tweet ID
                 self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
 
-                # Cleanup media files after successful posting
-                for media_path in all_media_paths:
-                    if media_path and os.path.exists(media_path):
-                        self.media_manager.cleanup_media(media_path)
+                # Only cleanup if ALL batches were successful
+                if len(tweet_ids) == len(media_batches):
+                    # Cleanup media files after successful posting
+                    for media_path in all_media_paths:
+                        if media_path and os.path.exists(media_path):
+                            self.media_manager.cleanup_media(media_path)
 
-                # Clear local paths in archive
-                for story_id in all_story_ids:
-                    self.archive_manager.update_story_local_paths(username, story_id, [])
+                    # Clear local paths in archive
+                    for story_id in all_story_ids:
+                        self.archive_manager.update_story_local_paths(username, story_id, [])
 
-                logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
-                total_posted += len(all_story_ids)
+                    logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
+                    total_posted += len(all_story_ids)
+                else:
+                    logger.warning(f"Day {date_key} for {username} was only partially posted ({len(tweet_ids)}/{len(media_batches)} batches). Media kept for manual intervention.")
+                    if not day_failed:
+                        total_failed += len(day_stories)
+                        day_failed = True
+                    continue
                 
                 # Add delay between days for the same account (except after the last day)
                 sorted_date_keys = sorted(stories_by_date.keys())
