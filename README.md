@@ -7,13 +7,14 @@ Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) an
 - 📸 **Automatic Story Archiving**: GitHub Actions fetches new stories every 8 hours
 - 🐦 **Daily Twitter Posting**: Posts stories from previous days at 00:00 UTC+7 grouped by day
 - 💾 **Archive Database**: Keeps track of all archived stories and local media
-- ⚙️ **Two-Workflow System**: Separate workflows for archiving (`--fetch-only`) and posting (`--post-daily`)
+- ⚙️ **Three-Workflow System**: Separate workflows for archiving (`--fetch-only`), posting (`--post-daily`), and weekly cleanup (`--archive-only --cleanup-only`)
 - 🖼️ **Media Optimization**: Automatically compresses images to meet Twitter size limits
 - 📝 **Customizable Captions**: Per-user caption templates (Gendis, Lana, etc.)
 - 📊 **Status Tracking**: Maintains statistics and logs of all operations
 - 🔄 **Auto-commit**: Archive updates tracked in git history
 - 🎬 **Multi-Media Support**: Handles Instagram stories with mixed images and videos (batches up to 4 items per tweet)
 - 📅 **Next-Day Posting**: Stories uploaded today are logged as "planned for next day" and posted at 00:00 UTC+7
+- 🧹 **Weekly Cleanup**: Automatic media cache cleanup and repository maintenance
 
 ## 🚀 Quick Start (GitHub Actions)
 
@@ -83,15 +84,52 @@ python main.py --username <instagram_username> --story-id <story_id>
 # View archive statistics
 python main.py --status
 
+# Verify Twitter API credentials and permissions
+python main.py --verify-twitter
+
 # Test setup
 python test_setup.py
+
+# Run media cache cleanup only
+python main.py --cleanup-only
 ```
 
-## How It Works
+## Repository State
+
+### Current Status (January 2025)
+
+This repository represents a **production-ready Instagram story archiving system** with comprehensive automation and error handling. The system is actively maintained with three separate GitHub Actions workflows that ensure reliable story collection and posting.
+
+### Key Achievements
+
+✅ **Fully Automated**: Three-workflow system handles archiving, posting, and maintenance
+✅ **Multi-Account Support**: Handles multiple Instagram accounts simultaneously
+✅ **Robust Error Handling**: Graceful degradation and comprehensive logging
+✅ **Twitter OAuth Ready**: Includes diagnostic tools for OAuth troubleshooting
+✅ **Media Optimization**: Automatic image compression and multi-media batching
+✅ **Repository Maintenance**: Weekly cleanup ensures clean git history
+
+### Technical Maturity
+
+- **Type hints**: Throughout the codebase for better maintainability
+- **Comprehensive documentation**: README, quick start, developer notes, and AI agent guide
+- **Testing tools**: Setup verification and OAuth diagnostic scripts
+- **Security conscious**: Environment variables, no hardcoded secrets
+- **Performance optimized**: Batched media uploads and efficient API usage
+
+### Recent Enhancements (2024-2025)
+
+1. **Three-Workflow Architecture**: Separated archiving, posting, and cleanup for better reliability
+2. **Enhanced Multi-Media Support**: Batches up to 4 media items per tweet
+3. **Twitter OAuth Tools**: Added verification and diagnostic capabilities
+4. **Improved Timezone Logic**: "Previous days" instead of just "yesterday"
+5. **Repository Health**: Weekly cleanup workflow maintains clean git history
+
+## Documentation
 
 ### GitHub Actions Workflows
 
-This project uses **two separate GitHub Actions workflows** for optimal automation:
+This project uses **three separate GitHub Actions workflows** for optimal automation:
 
 #### 1. Archive Workflow (`archive-stories.yml`)
 - **Schedule**: Every 8 hours (cron: `0 */8 * * *` UTC)
@@ -104,6 +142,12 @@ This project uses **two separate GitHub Actions workflows** for optimal automati
 - **Command**: `python main.py --post-daily`
 - **Purpose**: Post stories from previous days grouped by day
 - **Posts** to Twitter with batched media (up to 4 items per tweet)
+
+#### 3. Weekly Cleanup Workflow (`cleanup-media-cache.yml`)
+- **Schedule**: Weekly on Sundays at 02:00 UTC (09:00 UTC+7)
+- **Command**: `python main.py --archive-only --cleanup-only`
+- **Purpose**: Clean up media cache and push changes to repository
+- **Commits** file deletions and updates to git history
 
 ### Story Processing Flow
 
@@ -158,13 +202,15 @@ Each Instagram account gets its own thread:
 ├── .env.example                 # Example configuration
 ├── TWITTER_OAUTH_FIX.md         # Twitter OAuth permissions fix guide
 ├── DEVELOPER_NOTES.md           # Technical notes for developers
+├── AI_AGENT_GUIDE.md            # Quick reference for AI agents
 ├── archive.json                 # Archive database (auto-created)
 ├── archiver.log                 # Application logs
 ├── test_media.jpg               # Test media for OAuth verification
 ├── media_cache/                 # Temporary media storage (auto-created)
 └── .github/workflows/
     ├── archive-stories.yml      # Runs every 8 hours: python main.py --fetch-only
-    └── post-stories.yml         # Runs daily at 00:00 UTC+7: python main.py --post-daily
+    ├── post-stories.yml         # Runs daily at 00:00 UTC+7: python main.py --post-daily
+    └── cleanup-media-cache.yml  # Runs weekly: python main.py --archive-only --cleanup-only
 ```
 
 ## Archive Database Format
@@ -297,6 +343,8 @@ The archiver is resilient to errors:
 
 **⚠️ Critical**: After changing permissions, you MUST regenerate your Access Token and Secret. The old tokens won't work with new permissions!
 
+**🔍 Verification**: Use `python main.py --verify-twitter` to test your credentials and permissions before running the main workflows.
+
 ### "Rate limit exceeded"
 
 - Increase archive workflow interval (edit `.github/workflows/archive-stories.yml`)
@@ -358,11 +406,15 @@ python main.py --verify-twitter
 - [x] Custom hashtag/caption templates
 - [x] Handle stories with 4+ media items (multi-media batching)
 - [x] Separate archive and post workflows
+- [x] Weekly cleanup workflow for media cache management
+- [x] Twitter OAuth verification tools
 - [ ] Story filtering (time-based, caption-based)
 - [ ] Web dashboard for status monitoring
 - [ ] Database backup and restoration
 - [ ] Webhook notifications on errors
 - [ ] Instagram Stories reels/video support optimization
+- [ ] Docker containerization support
+- [ ] Discord notifications integration
 
 ## License
 

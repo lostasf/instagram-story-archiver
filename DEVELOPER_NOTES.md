@@ -13,6 +13,8 @@ Technical documentation for developers working on this codebase.
 - `--story-id`: Archive a specific story
 - `--username`: Specify Instagram username for --story-id
 - `--verify-twitter`: Verify Twitter API credentials and permissions
+- `--cleanup-only`: Run media cache cleanup only (no archiving or posting)
+- `--archive-only`: Archive stories without posting (alias for --fetch-only)
 
 **Config** (config.py) - Loads configuration from environment variables
 - Validates required API keys
@@ -150,7 +152,7 @@ If story has 5 media items:
 
 ## GitHub Actions Integration
 
-### Two Workflows
+### Three Workflows
 
 **archive-stories.yml**:
 - Schedule: Every 8 hours (`0 */8 * * *` UTC)
@@ -164,12 +166,19 @@ If story has 5 media items:
 - Purpose: Post stories from previous days
 - Commits: `archive.json` (with tweet_ids) and `archiver.log`
 
-### Why Separate?
+**cleanup-media-cache.yml**:
+- Schedule: Weekly on Sundays at 02:00 UTC (09:00 UTC+7)
+- Command: `python main.py --archive-only --cleanup-only`
+- Purpose: Clean up media cache and push repository changes
+- Commits: All file changes including deletions using `git add -A`
 
-1. **Frequency**: Archive runs every 8h to catch stories before they expire (24h on Instagram)
-2. **Organization**: Post runs once daily to post complete days together
-3. **Reliability**: Separation avoids rate limiting conflicts
-4. **Control**: Can manually trigger archive or post independently
+### Why Three?
+
+1. **Archive Workflow**: Runs every 8h to catch stories before they expire (24h on Instagram)
+2. **Post Workflow**: Runs once daily to post complete days together in organized threads
+3. **Cleanup Workflow**: Runs weekly to maintain repository cleanliness and disk space
+4. **Reliability**: Separation avoids rate limiting conflicts and provides granular control
+5. **Maintenance**: Weekly cleanup ensures old media files don't accumulate
 
 ## CLI Flags Reference
 
@@ -183,6 +192,7 @@ If story has 5 media items:
 | `--verify-twitter` | Verify Twitter API credentials | Troubleshooting |
 | `--post` | Post all pending stories | Legacy (not used in workflows) |
 | `--archive-only` | Same as --fetch-only | Alias |
+| `--cleanup-only` | Run media cache cleanup only | Weekly cleanup workflow |
 
 ## Error Handling
 
@@ -238,6 +248,16 @@ Checks:
 - Twitter API v1.1 authentication
 - Read permissions
 - Write permissions (via error handling)
+- Media upload permissions
+
+**--cleanup-only flag**: Test media cache cleanup
+```bash
+python main.py --cleanup-only
+```
+Tests:
+- Media cache directory cleanup
+- Archive validation
+- File deletion tracking
 
 ## Common Modifications
 
@@ -399,19 +419,21 @@ All pinned in `requirements.txt`.
 3. **Check archive.json** - Understand data structure
 4. **Review GitHub Actions** - See automation setup
 
+### Recent Updates (2024-2025)
+
+- **Three-Workflow System**: Added weekly cleanup workflow for media cache management
+- **Enhanced Multi-Media**: Improved batching to handle up to 4 items per tweet
+- **Twitter OAuth Tools**: Added --verify-twitter flag and diagnostic tools
+- **Timezone Logic**: Stories from previous days (not just yesterday) are now eligible for posting
+- **Repository Maintenance**: Weekly cleanup ensures file deletions are committed to git history
+
 ### Making Changes
 
 1. **Test locally** with `python main.py --fetch-only` first
 2. **Check archive.json** to verify changes
 3. **Test posting** with `python main.py --post-daily`
 4. **Update docs** (README.md, QUICKSTART.md) if changing behavior
-
-### Common Tasks
-
-- **Add feature**: Add to story_archiver.py, expose via CLI flag
-- **Fix bug**: Check logs, add error handling, test with test_setup.py
-- **Update API**: Update respective API wrapper (instagram_api.py or twitter_api.py)
-- **Change schedule**: Edit workflow YAML files
+5. **Test cleanup** with `python main.py --cleanup-only`
 
 ### Key Files to Know
 
@@ -420,3 +442,25 @@ All pinned in `requirements.txt`.
 - `archive_manager.py` - Database operations
 - `config.py` - Configuration loading
 - `.github/workflows/*.yml` - Automation
+- `diagnose_twitter_oauth.py` - Twitter OAuth troubleshooting
+- `test_setup.py` - Configuration verification
+
+### Critical Workflow Separation
+
+**Archive Workflow** (`archive-stories.yml`):
+- Runs every 8 hours: `python main.py --fetch-only`
+- Downloads and archives new stories
+- Does NOT post to Twitter
+- Commits archive.json and archiver.log
+
+**Post Workflow** (`post-stories.yml`):
+- Runs daily at 00:00 UTC+7: `python main.py --post-daily`
+- Posts stories from previous days grouped by day
+- Updates tweet_ids in archive.json
+- Cleans up media files after posting
+
+**Cleanup Workflow** (`cleanup-media-cache.yml`):
+- Runs weekly on Sundays at 02:00 UTC (09:00 UTC+7): `python main.py --archive-only --cleanup-only`
+- Cleans up media cache directory
+- Commits file deletions using `git add -A`
+- Pushes all changes to repository
