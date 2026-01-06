@@ -1093,14 +1093,12 @@ class StoryArchiver:
         logger.info("=" * 50)
         logger.info("ARCHIVE STATUS")
         logger.info(f"Total Stories (all accounts): {stats.get('total_stories')}")
-        logger.info(f"Total Media Items (all accounts): {stats.get('total_media')}")
 
         accounts = stats.get('accounts') or {}
         for username, account_stats in accounts.items():
             logger.info("-" * 50)
             logger.info(f"Instagram: {username}")
             logger.info(f"  Stories: {account_stats.get('total_stories')}")
-            logger.info(f"  Media:   {account_stats.get('total_media')}")
 
             # Count Twitter posts (stories with non-empty tweet_ids)
             stories = account_stats.get('stories', [])
