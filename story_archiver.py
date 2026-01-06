@@ -1,5 +1,7 @@
 import logging
 import os
+import time
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -284,6 +286,12 @@ class StoryArchiver:
                 tweet_ids.append(tweet_id)
                 last_tweet_id = tweet_id
                 logger.info(f"Posted tweet {idx + 1}/{len(media_batches)} for story {story_id}")
+                
+                # Add delay between media batches in the same story (except after the last batch)
+                if idx < len(media_batches) - 1:
+                    delay_seconds = random.uniform(5, 10)
+                    logger.info(f"Adding delay between media batches: {delay_seconds:.1f} seconds")
+                    time.sleep(delay_seconds)
             
             if not tweet_ids:
                 logger.error(f"Failed to post any tweets for story {story_id}")
@@ -714,6 +722,22 @@ class StoryArchiver:
                 else:
                     logger.error(f"Failed to post story {story_id} for {username}")
                     total_failed += 1
+                
+                # Add delay between stories from the same account (except after the last story)
+                if story != stories_to_post[-1]:
+                    delay_seconds = random.uniform(5, 10)
+                    logger.info(f"Adding delay between stories from {username}: {delay_seconds:.1f} seconds")
+                    time.sleep(delay_seconds)
+        
+        # Add delay between accounts (except after the last account)
+        if len(self.config.INSTAGRAM_USERNAMES) > 1:
+            for i, next_username in enumerate(self.config.INSTAGRAM_USERNAMES):
+                if i == len(self.config.INSTAGRAM_USERNAMES) - 1:  # Last account
+                    break
+                next_username = next_username.strip().lstrip('@')
+                delay_seconds = random.uniform(5, 10)
+                logger.info(f"Adding delay before posting to {next_username}: {delay_seconds:.1f} seconds")
+                time.sleep(delay_seconds)
 
         logger.info(f"Total stories posted: {total_posted}")
         logger.info(f"Total stories failed: {total_failed}")
@@ -915,6 +939,12 @@ class StoryArchiver:
                     tweet_ids.append(tweet_id)
                     last_tweet_id = tweet_id
                     logger.info(f"Posted tweet {idx + 1}/{len(media_batches)} for day {date_key}")
+                    
+                    # Add delay between media batches in the same day (except after the last batch)
+                    if idx < len(media_batches) - 1:
+                        delay_seconds = random.uniform(5, 10)
+                        logger.info(f"Adding delay between media batches for day {date_key}: {delay_seconds:.1f} seconds")
+                        time.sleep(delay_seconds)
 
                 if not tweet_ids:
                     logger.error(f"Failed to post any tweets for day {date_key} for {username}")
@@ -941,6 +971,23 @@ class StoryArchiver:
 
                 logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
                 total_posted += len(all_story_ids)
+                
+                # Add delay between days for the same account (except after the last day)
+                sorted_date_keys = sorted(stories_by_date.keys())
+                if date_key != sorted_date_keys[-1]:
+                    delay_seconds = random.uniform(5, 10)
+                    logger.info(f"Adding delay between days for {username}: {delay_seconds:.1f} seconds")
+                    time.sleep(delay_seconds)
+        
+        # Add delay between accounts (except after the last account)
+        if len(self.config.INSTAGRAM_USERNAMES) > 1:
+            for i, next_username in enumerate(self.config.INSTAGRAM_USERNAMES):
+                if i == len(self.config.INSTAGRAM_USERNAMES) - 1:  # Last account
+                    break
+                next_username = next_username.strip().lstrip('@')
+                delay_seconds = random.uniform(5, 10)
+                logger.info(f"Adding delay before posting to {next_username}: {delay_seconds:.1f} seconds")
+                time.sleep(delay_seconds)
 
         logger.info(f"Total stories posted: {total_posted}")
         logger.info(f"Total stories failed: {total_failed}")

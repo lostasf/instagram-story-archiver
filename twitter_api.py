@@ -3,6 +3,7 @@ import logging
 from typing import List, Optional
 import os
 import time
+import random
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -329,6 +330,14 @@ class TwitterAPI:
                     response_text=response_text,
                 )
             return None
+    
+    def _add_post_delay(self) -> None:
+        """
+        Add a random delay between 5-10 seconds between posts to avoid rate limiting.
+        """
+        delay_seconds = random.uniform(5, 10)
+        logger.info(f"Adding delay between posts: {delay_seconds:.1f} seconds")
+        time.sleep(delay_seconds)
     
     def post_tweet(
         self,
