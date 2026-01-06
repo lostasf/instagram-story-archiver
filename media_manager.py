@@ -115,14 +115,29 @@ class MediaManager:
     
     def cleanup_media(self, file_path: str) -> bool:
         """
-        Delete media file from cache.
+        Delete media file from cache and its variants (e.g. compressed version).
         """
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.info(f"Cleaned up media file: {file_path}")
-                return True
-            return False
+            if not os.path.exists(file_path):
+                return False
+
+            # If it's a compressed file, also try to delete the original
+            if "_compressed.jpg" in file_path:
+                original_path = file_path.replace("_compressed.jpg", ".jpg")
+                if os.path.exists(original_path):
+                    os.remove(original_path)
+                    logger.info(f"Cleaned up original media file: {original_path}")
+            
+            # If it's an original file, also try to delete the compressed version
+            elif file_path.endswith(".jpg") and "_compressed" not in file_path:
+                compressed_path = file_path.replace(".jpg", "_compressed.jpg")
+                if os.path.exists(compressed_path):
+                    os.remove(compressed_path)
+                    logger.info(f"Cleaned up compressed media file: {compressed_path}")
+
+            os.remove(file_path)
+            logger.info(f"Cleaned up media file: {file_path}")
+            return True
         except Exception as e:
             logger.error(f"Error cleaning up media: {e}")
             return False

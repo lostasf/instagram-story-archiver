@@ -324,6 +324,70 @@ class StoryArchiver:
             logger.error(f"Error posting story {story_id}: {e}", exc_info=True)
             return False
 
+    def cleanup_media_cache(self) -> int:
+        """
+        Comprehensive cleanup of media_cache.
+        Deletes files that:
+        1. Belong to stories already marked as posted.
+        2. Do not belong to any story in the archive (orphans).
+        3. Are variants (e.g. original files when compressed exists) - handled by cleanup_media.
+        
+        Keeps files that:
+        1. Belong to stories that are not yet posted (including those planned for tomorrow).
+        """
+        total_cleaned = 0
+        logger.info("Starting comprehensive cleanup of media_cache...")
+
+        # Build a set of all media paths currently referenced by unposted stories
+        needed_media_ids = set()
+        
+        for username in self.config.INSTAGRAM_USERNAMES:
+            username = username.strip().lstrip('@')
+            stats = self.archive_manager.get_statistics(username)
+            stories = stats.get('stories', [])
+            for story in stories:
+                if not story.get('tweet_ids'):
+                    story_id = str(story.get('story_id'))
+                    needed_media_ids.add(f"{username}_{story_id}")
+
+        cache_dir = self.media_manager.cache_dir
+        try:
+            filenames = os.listdir(cache_dir)
+        except FileNotFoundError:
+            return 0
+
+        for filename in filenames:
+            if filename == '.gitkeep':
+                continue
+            
+            # Extract username and story_id from filename
+            # Format: {username}_{story_id}_{idx}.{ext}
+            # or {username}_{story_id}_{idx}_compressed.jpg
+            stem = filename.rsplit('.', 1)[0]
+            if stem.endswith('_compressed'):
+                stem = stem[:-11] # len('_compressed')
+            
+            parts = stem.split('_')
+            if len(parts) < 3:
+                continue
+            
+            # The last part is idx, the second to last is story_id
+            story_id = parts[-2]
+            # The rest is username (can contain _)
+            username = '_'.join(parts[:-2])
+            
+            prefix = f"{username}_{story_id}"
+            
+            if prefix not in needed_media_ids:
+                file_path = os.path.join(cache_dir, filename)
+                if self.media_manager.cleanup_media(file_path):
+                    total_cleaned += 1
+        
+        if total_cleaned > 0:
+            logger.info(f"Cleaned up {total_cleaned} unneeded media files from cache")
+        
+        return total_cleaned
+
     def process_story(self, username: str, story_id: str, story_payload: Optional[Dict] = None) -> bool:
         """Process a single story immediately: archive and post."""
         if self.archive_story(username, story_id, story_payload):
