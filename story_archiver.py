@@ -1093,15 +1093,34 @@ class StoryArchiver:
         logger.info("=" * 50)
         logger.info("ARCHIVE STATUS")
         logger.info(f"Total Stories (all accounts): {stats.get('total_stories')}")
-        logger.info(f"Total Media Items (all accounts): {stats.get('total_media')}")
 
         accounts = stats.get('accounts') or {}
         for username, account_stats in accounts.items():
             logger.info("-" * 50)
             logger.info(f"Instagram: {username}")
             logger.info(f"  Stories: {account_stats.get('total_stories')}")
-            logger.info(f"  Media:   {account_stats.get('total_media')}")
-            logger.info(f"  Last check: {account_stats.get('last_check')}")
+
+            # Count Twitter posts (stories with non-empty tweet_ids)
+            stories = account_stats.get('stories', [])
+            twitter_posts = sum(1 for s in stories if isinstance(s, dict) and s.get('tweet_ids'))
+            logger.info(f"  Twitter posts: {twitter_posts}")
+
+            # Format last_check in UTC+7 timezone
+            last_check = account_stats.get('last_check')
+            if last_check:
+                try:
+                    from datetime import datetime, timezone, timedelta
+                    dt = datetime.fromisoformat(last_check.replace('Z', '+00:00'))
+                    # Convert to UTC+7
+                    utc_plus_7 = timezone(timedelta(hours=7))
+                    dt_utc7 = dt.astimezone(utc_plus_7)
+                    last_check_utc7 = dt_utc7.strftime('%Y-%m-%d %H:%M:%S UTC+7')
+                except Exception as e:
+                    last_check_utc7 = f"{last_check} (error formatting: {e})"
+            else:
+                last_check_utc7 = "Never"
+
+            logger.info(f"  Last check (UTC+7): {last_check_utc7}")
             logger.info(f"  Anchor tweet: {account_stats.get('anchor_tweet_id')}")
             logger.info(f"  Last tweet:   {account_stats.get('last_tweet_id')}")
 
