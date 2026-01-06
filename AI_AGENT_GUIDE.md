@@ -9,6 +9,7 @@ This document helps AI agents quickly understand and work with this codebase.
 **Core Flow**:
 1. Archive workflow (every 8h): Downloads stories from Instagram → saves to `archive.json`
 2. Post workflow (daily at 00:00 UTC+7): Groups stories from previous days → posts to Twitter in threads
+3. Cleanup workflow (weekly): Cleans up media cache and maintains repository
 
 **Key Components**:
 - `main.py` - Entry point with CLI flags
@@ -21,7 +22,7 @@ This document helps AI agents quickly understand and work with this codebase.
 
 ## Critical Concepts
 
-### Two-Workflow Separation
+### Three-Workflow System
 
 **Archive workflow** (`.github/workflows/archive-stories.yml`):
 - Runs every 8 hours: `cron: '0 */8 * * *'` (UTC)
@@ -34,6 +35,12 @@ This document helps AI agents quickly understand and work with this codebase.
 - Command: `python main.py --post-daily`
 - Purpose: Post stories from previous days grouped by day
 - Posts to Twitter with batched media
+
+**Cleanup workflow** (`.github/workflows/cleanup-media-cache.yml`):
+- Runs weekly on Sundays at 02:00 UTC (09:00 UTC+7)
+- Command: `python main.py --archive-only --cleanup-only`
+- Purpose: Clean up media cache and push repository changes
+- Commits all file changes including deletions using `git add -A`
 
 ### Timezone Logic (CRITICAL)
 
@@ -100,17 +107,22 @@ Twitter allows up to 4 media items per tweet (images or videos).
 | `--status` | Show archive statistics | Both (monitoring) |
 | `--story-id` | Archive specific story | Testing/debugging |
 | `--username` | Specify Instagram username | With --story-id |
+| `--verify-twitter` | Verify Twitter API credentials | Troubleshooting |
+| `--cleanup-only` | Run media cache cleanup only | Cleanup workflow |
+| `--archive-only` | Archive stories without posting | Alias for --fetch-only |
 
 ## GitHub Actions
 
 **Files**:
 - `.github/workflows/archive-stories.yml` - Archive workflow
 - `.github/workflows/post-stories.yml` - Post workflow
+- `.github/workflows/cleanup-media-cache.yml` - Cleanup workflow
 - `.github/README.md` - Workflow documentation
 
 **Schedules**:
 - Archive: `0 */8 * * *` (every 8 hours UTC)
 - Post: `0 17 * * *` (00:00 UTC+7 = 17:00 UTC previous day)
+- Cleanup: `0 2 * * 0` (Sundays at 02:00 UTC = 09:00 UTC+7)
 
 ## Common Tasks
 
@@ -227,9 +239,9 @@ python main.py --story-id <story_id> --username <username>
 - `GITHUB_ACTIONS_SETUP.md` - Complete GitHub Actions setup
 - `DEVELOPER_NOTES.md` - Technical reference (architecture, code details)
 - `.github/README.md` - Workflow-specific documentation
-- `TWITTER_OAUTH_PERMISSIONS_FIX.md` - Twitter OAuth troubleshooting (detailed)
-- `QUICK_FIX_CHECKLIST.md` - Quick checklist for Twitter OAuth issues
+- `TWITTER_OAUTH_FIX_GUIDE.md` - Twitter OAuth troubleshooting (comprehensive)
 - `AI_AGENT_GUIDE.md` - This document (for AI agents)
+- `DISCORD_SETUP.md` - Discord webhook integration setup
 
 ## Common Errors
 
@@ -246,7 +258,7 @@ python main.py --story-id <story_id> --username <username>
 ### "403 Forbidden - OAuth1 app permissions"
 - Twitter app permissions must be "Read and Write"
 - Regenerate Access Token and Secret after changing permissions
-- See `TWITTER_OAUTH_PERMISSIONS_FIX.md` for detailed fix instructions
+- See `TWITTER_OAUTH_FIX_GUIDE.md` for detailed fix instructions
 - Use `python main.py --verify-twitter` to test credentials
 
 ## Making Changes

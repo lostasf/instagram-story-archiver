@@ -200,7 +200,7 @@ Each Instagram account gets its own thread:
 ├── diagnose_twitter_oauth.py    # Twitter OAuth diagnostic tool
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Example configuration
-├── TWITTER_OAUTH_FIX.md         # Twitter OAuth permissions fix guide
+├── TWITTER_OAUTH_FIX_GUIDE.md    # Twitter OAuth permissions fix guide
 ├── DEVELOPER_NOTES.md           # Technical notes for developers
 ├── AI_AGENT_GUIDE.md            # Quick reference for AI agents
 ├── archive.json                 # Archive database (auto-created)
@@ -339,7 +339,7 @@ The archiver is resilient to errors:
 4. Update your `.env` file with new tokens
 5. Run `python main.py --verify-twitter` to verify
 
-**📖 Detailed Guide**: See [TWITTER_OAUTH_PERMISSIONS_FIX.md](TWITTER_OAUTH_PERMISSIONS_FIX.md) for complete step-by-step instructions.
+**📖 Detailed Guide**: See [TWITTER_OAUTH_FIX_GUIDE.md](TWITTER_OAUTH_FIX_GUIDE.md) for complete step-by-step instructions.
 
 **⚠️ Critical**: After changing permissions, you MUST regenerate your Access Token and Secret. The old tokens won't work with new permissions!
 
