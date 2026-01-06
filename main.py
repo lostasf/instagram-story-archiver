@@ -154,9 +154,10 @@ def main() -> None:
             logger.info(f'Posted {new_posted} stories from previous days')
             logger.info(f'Failed to post {new_failed} stories from previous days')
 
-            # Cleanup media cache after posting
-            cleaned_count = archiver.cleanup_media_cache()
-            logger.info(f'Cleaned up {cleaned_count} media files from cache')
+            # Cleanup media cache after posting (only if no failures)
+            if new_posted > 0 and new_failed == 0:
+                cleaned_count = archiver.cleanup_media_cache()
+                logger.info(f'Cleaned up {cleaned_count} media files from cache')
 
             after_posted_counts = {}
             for username in config.INSTAGRAM_USERNAMES:
@@ -217,9 +218,10 @@ def main() -> None:
             logger.info(f'Posted {new_posted} pending stories')
             logger.info(f'Failed to post {new_failed} pending stories')
 
-            # Cleanup media cache after posting
-            cleaned_count = archiver.cleanup_media_cache()
-            logger.info(f'Cleaned up {cleaned_count} media files from cache')
+            # Cleanup media cache after posting (only if no failures)
+            if new_posted > 0 and new_failed == 0:
+                cleaned_count = archiver.cleanup_media_cache()
+                logger.info(f'Cleaned up {cleaned_count} media files from cache')
         elif args.fetch_only:
             logger.info('Skipping post step (--fetch-only)')
         elif args.archive_only:

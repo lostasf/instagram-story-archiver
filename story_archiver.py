@@ -301,15 +301,19 @@ class StoryArchiver:
             self.archive_manager.update_story_tweets(username, story_id, tweet_ids)
             self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
             
-            # Cleanup media files after successful posting
-            for media_path in media_paths:
-                if media_path and os.path.exists(media_path):
-                    self.media_manager.cleanup_media(media_path)
-            
-            # Clear local paths in archive
-            self.archive_manager.update_story_local_paths(username, story_id, [])
-
-            logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
+            # Only cleanup if ALL batches were successful
+            if len(tweet_ids) == len(media_batches):
+                # Cleanup media files after successful posting
+                for media_path in media_paths:
+                    if media_path and os.path.exists(media_path):
+                        self.media_manager.cleanup_media(media_path)
+                
+                # Clear local paths in archive
+                self.archive_manager.update_story_local_paths(username, story_id, [])
+                logger.info(f"Successfully posted story {story_id} for {username} with {len(tweet_ids)} tweet(s)")
+            else:
+                logger.warning(f"Story {story_id} for {username} was only partially posted ({len(tweet_ids)}/{len(media_batches)} batches). Media kept for manual intervention.")
+                return False
             
             # Notify Discord about successful Twitter post (avoid spamming GitHub Actions runs)
             if self.discord and not os.getenv('GITHUB_ACTIONS'):
@@ -1024,17 +1028,25 @@ class StoryArchiver:
                 # Update last tweet ID
                 self.archive_manager.set_last_tweet_id(username, tweet_ids[-1])
 
-                # Cleanup media files after successful posting
-                for media_path in all_media_paths:
-                    if media_path and os.path.exists(media_path):
-                        self.media_manager.cleanup_media(media_path)
+                # Only cleanup if ALL batches were successful
+                if len(tweet_ids) == len(media_batches):
+                    # Cleanup media files after successful posting
+                    for media_path in all_media_paths:
+                        if media_path and os.path.exists(media_path):
+                            self.media_manager.cleanup_media(media_path)
 
-                # Clear local paths in archive
-                for story_id in all_story_ids:
-                    self.archive_manager.update_story_local_paths(username, story_id, [])
+                    # Clear local paths in archive
+                    for story_id in all_story_ids:
+                        self.archive_manager.update_story_local_paths(username, story_id, [])
 
-                logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
-                total_posted += len(all_story_ids)
+                    logger.info(f"Successfully posted day {date_key} for {username} with {len(tweet_ids)} tweet(s) containing {len(all_media_paths)} media items from {len(all_story_ids)} stories")
+                    total_posted += len(all_story_ids)
+                else:
+                    logger.warning(f"Day {date_key} for {username} was only partially posted ({len(tweet_ids)}/{len(media_batches)} batches). Media kept for manual intervention.")
+                    if not day_failed:
+                        total_failed += len(day_stories)
+                        day_failed = True
+                    continue
                 
                 # Add delay between days for the same account (except after the last day)
                 sorted_date_keys = sorted(stories_by_date.keys())
