@@ -212,7 +212,19 @@ def main() -> None:
             logger.info(f'Cleaned up {cleaned_count} media files from cache')
             archiver.print_status()
             logger.info('Cleanup completed')
-            return
+
+            if os.getenv('GITHUB_ACTIONS'):
+                discord.notify_cleanup_summary(
+                    workflow_name=github_context['workflow'],
+                    actor=github_context['actor'],
+                    repository=github_context['repository'],
+                    branch=github_context['branch'],
+                    run_url=github_context['run_url'],
+                    cleaned_count=cleaned_count,
+                )
+
+            if not args.archive_only:
+                return
 
         # Archive (always do this unless --post-daily)
         if args.fetch_only and not args.archive_only:

@@ -326,6 +326,32 @@ class DiscordNotifier:
             footer="GitHub Actions",
         )
 
+    def notify_cleanup_summary(
+        self,
+        *,
+        workflow_name: str,
+        actor: str,
+        repository: str,
+        branch: str,
+        run_url: str,
+        cleaned_count: int,
+    ) -> bool:
+        fields: List[Dict] = [
+            {"name": "Run URL", "value": f"[View Run]({run_url})", "inline": False},
+            {"name": "Files Cleaned", "value": str(cleaned_count), "inline": True},
+        ]
+
+        return self._send_success_embed(
+            title="✅ Media Cache Cleanup Summary",
+            description=(
+                f"Workflow `{workflow_name}` finished.\n"
+                f"Repo: `{repository}` • Branch: `{branch}` • Actor: `{actor}`"
+            ),
+            color=0x00FF00,
+            fields=fields,
+            footer="GitHub Actions",
+        )
+
     def notify_instagram_fetch_error(
         self,
         username: str,
