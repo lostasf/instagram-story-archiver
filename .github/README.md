@@ -1,6 +1,6 @@
 # GitHub Actions Workflows
 
-This directory contains two GitHub Actions workflows that automate the Instagram story archiving and posting process.
+This directory contains three GitHub Actions workflows that automate the Instagram story archiving and posting process.
 
 ## Workflows
 
@@ -49,9 +49,31 @@ This directory contains two GitHub Actions workflows that automate the Instagram
 - Updates `archive.json` with `tweet_ids`
 - Deletes media files from `media_cache/` after successful posting
 
+### `cleanup-media-cache.yml`
+
+**Purpose**: Weekly comprehensive cleanup of media_cache directory
+
+**Schedule**:
+- Every Sunday at 02:00 UTC (09:00 UTC+7)
+- Manual trigger via "Run workflow" button
+
+**What it does**:
+1. Checks out the repository
+2. Sets up Python 3.11
+3. Installs dependencies
+4. Runs comprehensive media cache cleanup: `python main.py --cleanup-only`
+5. Uploads logs as artifacts (7-day retention)
+6. Commits and pushes any changes
+
+**Key behavior**:
+- Deletes media files for stories that have been successfully posted to Twitter
+- Removes orphaned files that no longer correspond to any story in the archive
+- Keeps files for stories that haven't been posted yet (including those planned for tomorrow)
+- Provides additional cleanup beyond the automatic cleanup done after posting
+
 ## Workflow Separation
 
-The two-workflow system provides better control and reliability:
+The three-workflow system provides better control and reliability:
 
 1. **Archive workflow** (every 8 hours):
    - Focuses only on fetching new content
@@ -63,9 +85,15 @@ The two-workflow system provides better control and reliability:
    - Ensures complete days are posted together
    - Organized threads with grouped media
 
+3. **Cleanup workflow** (weekly on Sunday):
+   - Performs comprehensive cleanup of media_cache directory
+   - Removes files for successfully posted stories
+   - Deletes orphaned files that no longer match archive entries
+   - Runs as safety net beyond automatic cleanup after posting
+
 ## Environment
 
-Both workflows use:
+All workflows use:
 - GitHub Secrets for API credentials (RAPIDAPI_KEY, TWITTER_*, etc.)
 - GitHub Variables for non-secret config (INSTAGRAM_USERNAME, etc.)
 - Ubuntu latest runner
@@ -88,6 +116,7 @@ on:
 ### Current Schedules:
 - Archive workflow: `0 */8 * * *` (every 8 hours)
 - Post workflow: `0 17 * * *` (00:00 UTC+7 = 17:00 UTC previous day)
+- Cleanup workflow: `0 2 * * 0` (Sunday 02:00 UTC = 09:00 UTC+7)
 
 ### Common examples:
 - `0 * * * *` - Every hour
