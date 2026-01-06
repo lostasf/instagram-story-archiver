@@ -59,19 +59,32 @@ jobs:
           path: archiver.log
           retention-days: 7
 
+      - name: Show changes to be committed
+        if: success()
+        run: |
+          # Show what files will be included in the commit
+          git status --porcelain
+          echo "---"
+          git diff --cached --name-status
+
       - name: Commit cleanup changes
         if: success()
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          # Add files to track - including new untracked files
-          git add archive.json archiver.log || true
-          # Add media_cache directory if there are files in it
-          if [ -n "$(find media_cache -type f ! -name '.gitkeep')" ]; then
-            git add media_cache/
+          
+          # Stage all changes including deletions
+          # This ensures deleted files from media_cache are properly tracked
+          git add -A
+          
+          # Check if there are any changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
           fi
-          # Check if there are changes (including new files)
-          git diff --quiet && git diff --cached --quiet || git commit -m "chore: weekly media cache cleanup [skip ci]"
+          
+          # Commit all changes including deletions
+          git commit -m "chore: weekly media cache cleanup [skip ci]"
 
       - name: Push changes
         if: success()
