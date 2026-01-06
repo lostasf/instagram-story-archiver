@@ -76,6 +76,11 @@ def main() -> None:
         action='store_true',
         help='Verify Twitter API credentials and permissions',
     )
+    parser.add_argument(
+        '--cleanup-only',
+        action='store_true',
+        help='Run media cache cleanup only (no archiving or posting)',
+    )
 
     args = parser.parse_args()
 
@@ -198,6 +203,15 @@ def main() -> None:
                 logger.error(f'❌ {new_failed} stories failed to post. Check logs for details.')
                 sys.exit(1)
 
+            return
+
+        # Cleanup only (no archiving or posting)
+        if args.cleanup_only:
+            logger.info('Running in cleanup-only mode...')
+            cleaned_count = archiver.cleanup_media_cache()
+            logger.info(f'Cleaned up {cleaned_count} media files from cache')
+            archiver.print_status()
+            logger.info('Cleanup completed')
             return
 
         # Archive (always do this unless --post-daily)
