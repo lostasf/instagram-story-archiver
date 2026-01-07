@@ -47,7 +47,8 @@ Go to **Settings → Secrets and variables → Actions** and add the following s
 - `DISCORD_WEBHOOK_FAILURE_URL` - Webhook URL for the failure/errors channel
 
 #### Proxy Configuration (optional, recommended for Cloudflare blocking)
-- `PROXY_URL` - Proxy URL to prevent Cloudflare blocking (e.g., `http://proxy.example.com:8080`)
+- `HTTP_PROXY` - HTTP proxy URL to prevent Cloudflare blocking (e.g., `http://proxy.example.com:8080`)
+- `HTTPS_PROXY` - HTTPS proxy URL to prevent Cloudflare blocking (e.g., `http://proxy.example.com:8080`)
 
 ### 2. Add Repository Variables
 
@@ -291,17 +292,18 @@ Add to either workflow:
 
 To prevent Cloudflare blocking, configure a proxy:
 
-1. **Add PROXY_URL secret**:
+1. **Add HTTP_PROXY and HTTPS_PROXY secrets**:
    - Go to **Settings → Secrets and variables → Actions**
-   - Add secret `PROXY_URL` with your proxy server URL (e.g., `http://proxy.example.com:8080`)
+   - Add secret `HTTP_PROXY` with your HTTP proxy server URL (e.g., `http://proxy.example.com:8080`)
+   - Add secret `HTTPS_PROXY` with your HTTPS proxy server URL (e.g., `http://proxy.example.com:8080`)
 
 2. **Workflow configuration**:
    The workflows automatically use the proxy via `HTTP_PROXY` and `HTTPS_PROXY` environment variables:
 
    ```yaml
    env:
-     HTTP_PROXY: ${{ secrets.PROXY_URL }}
-     HTTPS_PROXY: ${{ secrets.PROXY_URL }}
+     HTTP_PROXY: ${{ secrets.HTTP_PROXY }}
+     HTTPS_PROXY: ${{ secrets.HTTPS_PROXY }}
    ```
 
 3. **Proxy requirements**:
@@ -412,7 +414,7 @@ The `archive.json` file grows over time. GitHub has size limits for individual f
 
 ### Q: How to prevent Cloudflare blocking?
 
-**A**: Configure a proxy by adding a `PROXY_URL` secret with your proxy server URL. The workflows will automatically route traffic through the proxy to avoid Cloudflare IP blocking.
+**A**: Configure a proxy by adding `HTTP_PROXY` and `HTTPS_PROXY` secrets with your proxy server URLs. The workflows will automatically route traffic through the proxy to avoid Cloudflare IP blocking.
 
 ## Support
 
