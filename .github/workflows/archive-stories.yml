@@ -29,16 +29,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check proxy configuration
-        run: |
-          if [ -n "$HTTP_PROXY" ] || [ -n "$HTTPS_PROXY" ]; then
-            echo "🔧 Proxy is currently being used:"
-            [ -n "$HTTP_PROXY" ] && echo "  HTTP_PROXY: $HTTP_PROXY"
-            [ -n "$HTTPS_PROXY" ] && echo "  HTTPS_PROXY: $HTTPS_PROXY"
-          else
-            echo "ℹ️  No proxy configured - using direct connection"
-          fi
-
       - name: Archive Instagram stories (fetch only)
         env:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
@@ -56,9 +46,6 @@ jobs:
           DISCORD_WEBHOOK_FAILURE_URL: ${{ secrets.DISCORD_WEBHOOK_FAILURE_URL }}
           ARCHIVE_DB_PATH: ./archive.json
           MEDIA_CACHE_DIR: ./media_cache
-          # Proxy configuration to prevent Cloudflare blocking
-          HTTP_PROXY: ${{ secrets.HTTP_PROXY }}
-          HTTPS_PROXY: ${{ secrets.HTTPS_PROXY }}
         run: python main.py --fetch-only
 
       - name: Upload logs
