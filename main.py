@@ -208,7 +208,7 @@ def main() -> None:
         # Cleanup only (no archiving or posting)
         if args.cleanup_only:
             logger.info('Running in cleanup-only mode...')
-            cleaned_count = archiver.cleanup_media_cache()
+            cleaned_count = archiver.cleanup_media_cache(posted_only=True)
             logger.info(f'Cleaned up {cleaned_count} media files from cache')
             archiver.print_status()
             logger.info('Cleanup completed')
