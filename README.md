@@ -47,6 +47,7 @@ Go to **Settings → Secrets and variables → Actions** and add:
 The workflows run automatically:
 - **Archive workflow**: Every 8 hours (fetches stories only)
 - **Post workflow**: Daily at 00:00 UTC+7 (posts stories from previous days)
+- **Robust Progress Persistence**: If the posting process fails partway (e.g., due to rate limits), the script automatically commits and pushes successful progress to the repository before exiting with an error. This ensures that the next run picks up from where it left off, avoiding duplicate posts and respecting API quotas.
 
 Check the **Actions** tab to see runs.
 
