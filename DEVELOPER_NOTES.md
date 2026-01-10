@@ -71,9 +71,10 @@ Technical documentation for developers working on this codebase.
      - Create/reply to anchor tweet (customizable per account)
      - Batch up to 4 media items per tweet
      - Post tweets with progress indicators: `(1/2)`, `(2/2)`, etc.
-     - Update `archive.json` with `tweet_ids`
-3. Delete media files from `media_cache/` after successful posting
-4. Commit `archive.json` to git
+     - Update `archive.json` with `tweet_ids` (saved to disk immediately)
+3. Delete media files from `media_cache/` for successful posts even if some accounts/days failed
+4. **Robust Progress Persistence**: Commit and push `archive.json` and `archiver.log` to the repository if any stories were successfully posted. This ensures that progress is saved even if the script hits a rate limit or encounters an error later in the process.
+5. Exit with error code 1 if any posts failed, but ONLY after committing and pushing successful progress.
 
 ### Timezone Handling
 

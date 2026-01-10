@@ -42,6 +42,17 @@ This document helps AI agents quickly understand and work with this codebase.
 - Purpose: Clean up media cache and push repository changes
 - Commits all file changes including deletions using `git add -A`
 
+### Post Flow (Robustness)
+
+**Critical Error Handling**:
+- If posting fails partway (e.g., Twitter rate limit), the script MUST:
+  1. Update `archive.json` with successful `tweet_ids` (done automatically during posting).
+  2. Clean up media cache for successful posts.
+  3. **Commit and push** the updated `archive.json` and `archiver.log` to the repository.
+  4. Only then return an error code 1.
+- This ensures the next run picks up exactly where it left off.
+- Implementation: `archiver.commit_and_push_to_repo()` in `main.py`.
+
 ### Timezone Logic (CRITICAL)
 
 All posting logic uses **UTC+7 timezone**:

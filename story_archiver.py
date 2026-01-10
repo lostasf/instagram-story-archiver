@@ -1102,6 +1102,51 @@ class StoryArchiver:
         logger.info(f"Total stories failed: {total_failed}")
         return total_posted, total_failed
 
+    def commit_and_push_to_repo(self) -> bool:
+        """
+        Commit and push changes to archive.json and archiver.log to the repository.
+        This ensures progress is saved even if the workflow fails later.
+        """
+        if not os.getenv('GITHUB_ACTIONS'):
+            logger.info("Not running in GitHub Actions, skipping git commit/push")
+            return False
+
+        try:
+            import subprocess
+
+            logger.info("Committing and pushing changes to repository...")
+
+            # Configure git
+            subprocess.run(["git", "config", "--local", "user.email", "github-actions[bot]@users.noreply.github.com"], check=True)
+            subprocess.run(["git", "config", "--local", "user.name", "github-actions[bot]"], check=True)
+
+            # Add files to track - including new untracked files
+            subprocess.run(["git", "add", "archive.json", "archiver.log"], check=True)
+
+            # Check if media_cache has changes (specifically deletions from cleanup)
+            if os.path.exists(self.config.MEDIA_CACHE_DIR):
+                # Use git add -A to record file deletions
+                subprocess.run(["git", "add", "-A", self.config.MEDIA_CACHE_DIR], check=True)
+
+            # Check if there are changes to commit
+            status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout
+            if not status:
+                logger.info("No changes to commit")
+                return True
+
+            # Commit
+            subprocess.run(["git", "commit", "-m", "chore: update archive and media cache (partial progress) [skip ci]"], check=True)
+
+            # Push
+            # GHA checkout with fetch-depth: 0 and default settings allows this
+            subprocess.run(["git", "push"], check=True)
+
+            logger.info("Successfully pushed partial progress to repository")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to commit and push changes: {e}")
+            return False
+
     def log_pending_story_count(self) -> int:
         """Log how many pending stories are currently in the archive."""
 
