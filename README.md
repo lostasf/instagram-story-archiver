@@ -163,7 +163,7 @@ This project uses **three separate GitHub Actions workflows** for optimal automa
 1. **Check Eligible Stories**: Stories where `taken_at < today` (UTC+7) and `tweet_ids` is empty
 2. **Group by Day**: All stories from the same day are grouped together
 3. **Batch Media**: Up to 4 media items (images or videos) per tweet to minimize tweets
-4. **Post to Thread**: Creates/replies to thread with progress indicators like `(1/2)`, `(2/2)`
+4. **Post to Thread**: Creates/replies to thread with captions only (no progress indicators)
 5. **Update Archive**: Saves `tweet_ids` to `archive.json`
 6. **Cleanup**: Deletes media files from `media_cache/` and clears `local_media_paths`
 
@@ -177,7 +177,7 @@ This project uses **three separate GitHub Actions workflows** for optimal automa
 Each Instagram account gets its own thread:
 - **Anchor tweet**: One tweet per Instagram account (customizable via `TWITTER_THREAD_CONFIG`)
 - **Story tweets**: All stories from the same day are posted as replies in that account's thread
-- **Media batching**: Up to 4 media items (images or videos) per tweet with progress indicators
+- **Media batching**: Up to 4 media items (images or videos) per tweet without progress indicators
 - **One thread per day**: All stories from the same day are grouped into a single thread
 
 ### Rate Limiting
@@ -278,7 +278,7 @@ The archiver correctly handles Instagram stories with multiple media items (mixe
 **Post Stage:**
 - **Media Batching**: Batches up to 4 media items (images or videos) per tweet.
 - **Unified Threads**: Photos and videos can be mixed in the same tweet to minimize the total number of tweets in a thread.
-- Creates threaded tweets with progress indicators: `(1/2)`, `(2/2)`
+- No part indicators on tweets.
 
 ### Example
 
@@ -289,8 +289,8 @@ If an Instagram story has 2 images and 1 video:
 
 If an Instagram story has 5 items (e.g., 4 images and 1 video):
 1. Posts to Twitter as 2 tweets:
-   - Tweet 1: 4 images + caption + `(1/2)`
-   - Tweet 2: 1 video + caption + `(2/2)`
+   - Tweet 1: 4 images + caption
+   - Tweet 2: 1 video + caption
 
 Both tweets are replies in the same thread.
 

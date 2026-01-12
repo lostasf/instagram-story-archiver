@@ -170,7 +170,7 @@ Takes 1-3 minutes per story depending on media size.
 2. ✓ Finds stories where `taken_at < today` (UTC+7) and `tweet_ids` is empty
 3. ✓ Groups stories by day
 4. ✓ Batches up to 4 media items per tweet
-5. ✓ Posts to Twitter with progress indicators
+5. ✓ Posts to Twitter with captions only (no progress indicators)
 6. ✓ Updates `archive.json` with `tweet_ids`
 7. ✓ Deletes media files from `media_cache/`
 
@@ -236,7 +236,7 @@ Each day's stories become a Twitter thread:
 - **Archive workflow**: Downloads all new stories every 8 hours
 - **Post workflow**: Posts stories from previous days in organized threads
   - Up to 4 media items per tweet
-  - Progress indicators: `(1/2)`, `(2/2)` for multi-tweet days
+  - No progress indicators
   - Custom captions per account
 
 All tracked in `archive.json` with:

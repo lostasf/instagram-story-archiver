@@ -107,7 +107,7 @@ Twitter allows up to 4 media items per tweet (images or videos).
 2. For each day:
    - Create/reply to anchor tweet
    - Batch up to 4 media items per tweet
-   - Post tweets with progress indicators: `(1/2)`, `(2/2)`
+   - Post tweets with captions only (no progress indicators)
 
 ## CLI Flags
 

@@ -70,7 +70,7 @@ Technical documentation for developers working on this codebase.
    - For each day:
      - Create/reply to anchor tweet (customizable per account)
      - Batch up to 4 media items per tweet
-     - Post tweets with progress indicators: `(1/2)`, `(2/2)`, etc.
+     - Post tweets with captions only (no progress indicators)
      - Update `archive.json` with `tweet_ids` (saved to disk immediately)
 3. Delete media files from `media_cache/` for successful posts even if some accounts/days failed
 4. **Robust Progress Persistence**: Commit and push `archive.json` and `archiver.log` to the repository if any stories were successfully posted. This ensures that progress is saved even if the script hits a rate limit or encounters an error later in the process.
@@ -109,8 +109,8 @@ for i in range(0, len(media_paths), batch_size):
 ```
 
 If story has 5 media items:
-- Tweet 1: 4 items + caption + "(1/2)"
-- Tweet 2: 1 item + caption + "(2/2)"
+- Tweet 1: 4 items + caption
+- Tweet 2: 1 item + caption
 - Both tweets are in the same thread
 
 ## Archive Database Schema
