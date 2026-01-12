@@ -276,11 +276,9 @@ class StoryArchiver:
                     reply_to_id=last_tweet_id,
                     username=username,
                 )
-                
+
                 if not tweet_id:
                     logger.error(f"Failed to post tweet for batch {idx + 1} of story {story_id}")
-                    # Save orphan media IDs so an engineer can manually run the command
-                    self.archive_manager.add_orphan_media_ids(username, story_id, media_ids)
                     break
                 
                 tweet_ids.append(tweet_id)

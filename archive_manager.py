@@ -168,7 +168,6 @@ class ArchiveManager:
                 'media_type': story_data.get('media_type'),
                 'local_media_paths': story_data.get('local_media_paths', []),
                 'media_types': story_data.get('media_types', []),
-                'orphan_media_ids': [],
             }
 
             account['archived_stories'].append(entry)
@@ -244,36 +243,6 @@ class ArchiveManager:
 
         except Exception as e:
             logger.error(f"Error updating story local paths: {e}")
-            return False
-
-    def add_orphan_media_ids(self, instagram_username: str, story_id: str, media_ids: List[str]) -> bool:
-        """Store orphan media IDs that were uploaded but failed to be posted in a tweet."""
-        try:
-            account = self._get_account(instagram_username)
-            story_id_str = str(story_id)
-
-            for entry in account.get('archived_stories', []):
-                if not isinstance(entry, dict):
-                    continue
-                if str(entry.get('story_id')) == story_id_str:
-                    if 'orphan_media_ids' not in entry:
-                        entry['orphan_media_ids'] = []
-                    
-                    # Add new IDs, avoiding duplicates
-                    current_orphans = entry.get('orphan_media_ids', [])
-                    for mid in media_ids:
-                        if mid not in current_orphans:
-                            current_orphans.append(mid)
-                    
-                    entry['orphan_media_ids'] = current_orphans
-                    logger.info(f"Added {len(media_ids)} orphan media IDs to story {story_id_str}")
-                    return self._save_archive()
-
-            logger.warning(f"Story {story_id_str} not found in archive for {instagram_username}")
-            return False
-
-        except Exception as e:
-            logger.error(f"Error adding orphan media IDs: {e}")
             return False
 
     def get_anchor_tweet_id(self, instagram_username: Optional[str] = None) -> Optional[str]:
