@@ -264,11 +264,8 @@ class StoryArchiver:
                     logger.error(f"Failed to upload media batch {idx + 1} for story {story_id}")
                     continue
                 
-                # Add batch info to caption if there are multiple batches
-                if len(media_batches) > 1:
-                    tweet_text = f"{caption}\n({idx + 1}/{len(media_batches)})"
-                else:
-                    tweet_text = caption
+                # Post the batch with caption only (no part indicator)
+                tweet_text = caption
                 
                 tweet_id = self.twitter_api.post_tweet(
                     text=tweet_text,
