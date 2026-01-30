@@ -331,9 +331,47 @@
           "media_types": [
             "image"
           ]
+        },
+        {
+          "story_id": "3821549201247552344",
+          "instagram_username": "jkt48.gendis",
+          "archived_at": "2026-01-30T16:37:12.090376",
+          "taken_at": 1769784186,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fcgk6-3.fna.fbcdn.net/v/t51.82787-15/624589820_17995759718866679_7771403481853987639_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=105&ig_cache_key=MzgyMTU0OTIwMTI0NzU1MjM0NA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=CcjZK1k5TVMQ7kNvwGdoio9&_nc_oc=AdlPeAos37dy7EuTrDx7_cuug0DphV8utBbqLn5tf9xKXsJYIMa8BndCPZv8q22SkP8&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fcgk6-3.fna&_nc_gid=fU7jjfWK8WhPW7LQsfrZWQ&oh=00_AfohWoRgBiDQ5IxOaM6GvoNr0h4_5iSLIM6_hdrfNJYMUw&oe=6982A59B"
+          ],
+          "local_media_path": "./media_cache/jkt48.gendis_3821549201247552344_0.jpg",
+          "media_type": "image",
+          "local_media_paths": [
+            "./media_cache/jkt48.gendis_3821549201247552344_0.jpg"
+          ],
+          "media_types": [
+            "image"
+          ]
+        },
+        {
+          "story_id": "3821550000069521577",
+          "instagram_username": "jkt48.gendis",
+          "archived_at": "2026-01-30T16:37:13.828861",
+          "taken_at": 1769784281,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fcgk6-3.fna.fbcdn.net/v/t51.82787-15/624805147_17995759808866679_4904431643219943171_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=109&ig_cache_key=MzgyMTU1MDAwMDA2OTUyMTU3Nw%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjExNzl4MjA5Ni5zZHIuQzMifQ%3D%3D&_nc_ohc=FFxXxvJ3KMYQ7kNvwGqZePj&_nc_oc=AdlE4-oDldyhqZD0ZYG5Rt4ZMFOyE6K9EHEgkj_wEj8vVGuJ1IbTbPMj7RJBguITlr8&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fcgk6-3.fna&_nc_gid=fU7jjfWK8WhPW7LQsfrZWQ&oh=00_Afqkeb4TEDczuF22Gys8ZwfgiDj7rCGXE1tUV7WrjXoJ8Q&oe=69829E3D"
+          ],
+          "local_media_path": "./media_cache/jkt48.gendis_3821550000069521577_0.jpg",
+          "media_type": "image",
+          "local_media_paths": [
+            "./media_cache/jkt48.gendis_3821550000069521577_0.jpg"
+          ],
+          "media_types": [
+            "image"
+          ]
         }
       ],
-      "last_check": "2026-01-30T08:36:16.406131",
+      "last_check": "2026-01-30T16:37:09.595580",
       "anchor_tweet_id": "2007502196833718272",
       "last_tweet_id": "2016202248121155852"
     },
@@ -722,7 +760,7 @@
           ]
         }
       ],
-      "last_check": "2026-01-30T08:36:17.107861",
+      "last_check": "2026-01-30T16:37:13.834539",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2015840311231357139"
     },
@@ -4108,7 +4146,7 @@
           ]
         }
       ],
-      "last_check": "2026-01-30T08:36:17.762040",
+      "last_check": "2026-01-30T16:37:18.007194",
       "anchor_tweet_id": "2008228446711755112",
       "last_tweet_id": "2016202262981574731"
     },
@@ -4950,7 +4988,7 @@
           ]
         }
       ],
-      "last_check": "2026-01-30T08:36:18.385887",
+      "last_check": "2026-01-30T16:37:19.514258",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2015840588281905296"
     }
