@@ -1308,15 +1308,15 @@
           "archived_at": "2026-02-09T02:03:21.958702",
           "taken_at": 1770571980,
           "media_count": 1,
-          "tweet_ids": [],
+          "tweet_ids": [
+            "2020918564618637724"
+          ],
           "media_urls": [
             "https://instagram.feze13-1.fna.fbcdn.net/v/t51.82787-15/629519555_17948393160095837_336036053240087352_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=111&ig_cache_key=MzgyODE1NzY5NzA5NTg4MjIzMA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6InhwaWRzLjEyODR4MjI4Mi5zZHIuQzMifQ%3D%3D&_nc_ohc=mTPees6BJbYQ7kNvwHYOJtZ&_nc_oc=Adk3Vutw-c0kJcYoza16BWkw5f9Mnl2H5GJGLIvYK-VGKe2i9-sS3SXjykHMFye4W-at66aEjmcrA0_fZVE4ZV4U&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.feze13-1.fna&_nc_gid=NjVxMNoYLh7H2uldA0LTpQ&oh=00_Afsb_nSkyiNI0-JQNj1hsdDv_Af_7oye89Gv--CflQAvcw&oe=698EF2EB"
           ],
-          "local_media_path": "./media_cache/jkt48.lana.a_3828157697095882230_0.jpg",
+          "local_media_path": null,
           "media_type": "image",
-          "local_media_paths": [
-            "./media_cache/jkt48.lana.a_3828157697095882230_0.jpg"
-          ],
+          "local_media_paths": [],
           "media_types": [
             "image"
           ]
@@ -1324,7 +1324,7 @@
       ],
       "last_check": "2026-02-09T08:52:01.513761",
       "anchor_tweet_id": "2007939230027403404",
-      "last_tweet_id": "2020550510638760042"
+      "last_tweet_id": "2020918564618637724"
     },
     "jkt48.marsha": {
       "archived_stories": [
