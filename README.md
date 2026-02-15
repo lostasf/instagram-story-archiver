@@ -1,6 +1,6 @@
-# Gendis Instagram Story Archiver
+# Instagram Story Archiver
 
-Archive Instagram stories from one or more accounts (default: `jkt48.gendis`) and automatically post them to Twitter/X in organized threads.
+Archive Instagram stories from one or more accounts and automatically post them to Twitter/X in organized threads.
 
 ## ✨ Features
 
