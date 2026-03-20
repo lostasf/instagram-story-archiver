@@ -2082,7 +2082,7 @@
           ]
         }
       ],
-      "last_check": "2026-03-19T16:56:10.144756",
+      "last_check": "2026-03-20T01:58:12.372173",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2033968653985603971"
     },
@@ -8373,9 +8373,47 @@
           "media_types": [
             "video"
           ]
+        },
+        {
+          "story_id": "3856173408107831541",
+          "instagram_username": "jkt48.marsha",
+          "archived_at": "2026-03-20T01:58:16.871362",
+          "taken_at": 1773911713,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fpet7-1.fna.fbcdn.net/o1/v/t2/f2/m367/AQMBw1XF4GId5thFNAVhtmMY8dRL_EPGBOPqkEBlYJG-Sls7UmzQKNU7bswnYZv_s1wvzt6bbKohiOVeKkAVA2bofg9NjW1PqyXSixc.mp4?_nc_cat=111&_nc_oc=AdqSQq57_Kr-tv9TXS0DlmLEuWe7ECHkLb8mPMO9l5g4Ghmn-EOEwP_mB9f8sADAw9pG4VkRpKMOgm29Mv3qrSvl&_nc_sid=5e9851&_nc_ht=instagram.fpet7-1.fna.fbcdn.net&_nc_ohc=B4PpoeBfZEcQ7kNvwGOcbWN&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuMTA4MC5kYXNoX2Jhc2VsaW5lXzEwODBwX3YxIiwieHB2X2Fzc2V0X2lkIjoxNzk0ODgzNzUzODExMDM0NiwiYXNzZXRfYWdlX2RheXMiOjAsInZpX3VzZWNhc2VfaWQiOjEwODI2LCJkdXJhdGlvbl9zIjoxNSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=8fdf7abd2bb68c0d&_nc_vs=HBksFQIYQGlnX2VwaGVtZXJhbC9DNzQyODg1OTIxQzg4MTEyMjgyRTIzQUFBM0QxNzc4NV92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQwNDcyOTY2QjVDNjk5RTVGRDY2MjgxQTQ3QzE4NkI2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaU7rjZ7JfiPxUCKAJDMywXQC4AAAAAAAAYFmRhc2hfYmFzZWxpbmVfMTA4MHBfdjERAHXoB2WUqQEA&_nc_gid=rTLT_rhMXypGuV4zmwvv5g&_nc_ss=7a30f&_nc_zt=28&oh=00_Afw3bwLbCE0nQnTfnO5rtro5NxN_V7rTDOUMKEvDri_GcA&oe=69C263B8"
+          ],
+          "local_media_path": "./media_cache/jkt48.marsha_3856173408107831541_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.marsha_3856173408107831541_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
+        },
+        {
+          "story_id": "3856229101879887923",
+          "instagram_username": "jkt48.marsha",
+          "archived_at": "2026-03-20T01:58:18.332395",
+          "taken_at": 1773918352,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fpet4-1.fna.fbcdn.net/o1/v/t2/f2/m367/AQPrSUUUqfMi0LZM7I03O6RZjhLlkfkfGBulZKIl0KAsWww-F9qvt7aNQmo6dP2tI6914L1pi9kxfBtaDZdad1nanQzaIcemI7PqmSY.mp4?_nc_cat=101&_nc_oc=AdqFuEZXJDTLyT8SYsbrV5MJbLIFVwGwE3YgFgk0Ck2l_K5cVquKPYXOzE_LPINFN-rWd7wdrpWesSc9v_4eO3yd&_nc_sid=5e9851&_nc_ht=instagram.fpet4-1.fna.fbcdn.net&_nc_ohc=jOwsffh_lhoQ7kNvwEHdS_W&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuMTA4MC5kYXNoX2Jhc2VsaW5lXzEwODBwX3YxIiwieHB2X2Fzc2V0X2lkIjoxNzk0ODg1NDI3ODExMDM0NiwiYXNzZXRfYWdlX2RheXMiOjAsInZpX3VzZWNhc2VfaWQiOjEwODI2LCJkdXJhdGlvbl9zIjoxNSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=47d6811b863a6ad6&_nc_vs=HBksFQIYQGlnX2VwaGVtZXJhbC82NTQ2QkQ2MDk5NEY2QkU5OTAwNDM2RjVDNjA4QjZBM192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzEzNDgyRDgxODc3NUE2RDhCMDk1MENENzhFRTE0NjkyX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaU8vm16ZjiPxUCKAJDMywXQC4AAAAAAAAYFmRhc2hfYmFzZWxpbmVfMTA4MHBfdjERAHXoB2WUqQEA&_nc_gid=rTLT_rhMXypGuV4zmwvv5g&_nc_ss=7a30f&_nc_zt=28&oh=00_Afx8WXbC39Y71Gy96PbBiyisgIssXhxmYRR1JnitNjuu1Q&oe=69C27852"
+          ],
+          "local_media_path": "./media_cache/jkt48.marsha_3856229101879887923_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.marsha_3856229101879887923_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
         }
       ],
-      "last_check": "2026-03-19T16:56:11.554235",
+      "last_check": "2026-03-20T01:58:14.866980",
       "anchor_tweet_id": "2008228446711755112",
       "last_tweet_id": "2034329243555877132"
     },
@@ -10796,7 +10834,7 @@
           ]
         }
       ],
-      "last_check": "2026-03-19T16:56:22.090367",
+      "last_check": "2026-03-20T01:58:18.344550",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2034690581293650254"
     },
@@ -11606,7 +11644,7 @@
           ]
         }
       ],
-      "last_check": "2026-03-19T16:56:09.271173",
+      "last_check": "2026-03-20T01:58:01.960467",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2034329233175003267"
     }
