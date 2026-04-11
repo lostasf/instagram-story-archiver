@@ -2633,7 +2633,7 @@
           ]
         }
       ],
-      "last_check": "2026-04-10T16:49:51.579212",
+      "last_check": "2026-04-11T02:04:55.855309",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2042661737082568896"
     },
@@ -9954,9 +9954,47 @@
           "media_types": [
             "image"
           ]
+        },
+        {
+          "story_id": "3872359874232003912",
+          "instagram_username": "jkt48.marsha",
+          "archived_at": "2026-04-11T02:04:58.444641",
+          "taken_at": 1775841289,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.ftlv6-1.fna.fbcdn.net/o1/v/t2/f2/m367/AQMR9S8PC-ssuqWq9B8MOZocKdhZVVY0T8wkB9n05JlGjB-t9U1_ge-MMmprUW9AzhFxtC3J6HcZIiVlAZ6h-IcFQmVdCz1Sq2YjzLY.mp4?_nc_cat=105&_nc_oc=AdqqqWRVGcuQM4IpxpZ2-3B-kh-G3uxlWxyQKuARQ1xxYoxIPwLrrOsOTdZH5Gqt1x4&_nc_sid=5e9851&_nc_ht=instagram.ftlv6-1.fna.fbcdn.net&_nc_ohc=h28wLSWxjAUQ7kNvwFVrTOe&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuMTA4MC5kYXNoX2Jhc2VsaW5lXzEwODBwX3YxIiwieHB2X2Fzc2V0X2lkIjoxNzk1MzU0MTEyMTExMDM0NiwiYXNzZXRfYWdlX2RheXMiOjAsInZpX3VzZWNhc2VfaWQiOjEwODI2LCJkdXJhdGlvbl9zIjoxNSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=487a8a3b4fef288b&_nc_vs=HBksFQIYQGlnX2VwaGVtZXJhbC80QzRDODM2MzJCMEI1NTg5QkM3Qjc5MjBEM0Q2M0M4Nl92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzI3NDBFN0M0RTVEMzE1MTdDRjQ5NDYyMzhCMDIwRUE5X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaUxd-P0ankPxUCKAJDMywXQC4AAAAAAAAYFmRhc2hfYmFzZWxpbmVfMTA4MHBfdjERAHXoB2WUqQEA&_nc_gid=4itxBB5NWCzoeUFn88LCQQ&_nc_zt=28&_nc_ss=7a32e&oh=00_Af3TiAYeT8Bm-GIpubwfCSy8nBSx6y499B5tpB7ZOCGMhg&oe=69DF658E"
+          ],
+          "local_media_path": "./media_cache/jkt48.marsha_3872359874232003912_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.marsha_3872359874232003912_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
+        },
+        {
+          "story_id": "3872360129975533515",
+          "instagram_username": "jkt48.marsha",
+          "archived_at": "2026-04-11T02:04:59.958699",
+          "taken_at": 1775841320,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.ftlv5-1.fna.fbcdn.net/o1/v/t2/f2/m367/AQOxCf7QAsL5ojiJqrO91XCKBB-yzGTksqo2P1ie37LmI2W2Uj03MZnSg78jUk3HpEiVHesUiO3VEaOEiyY-92V0eC8_DN4JE4hoLgs.mp4?_nc_cat=111&_nc_oc=Adpby1grLxhtwzffwnRXV2Q7rDe2asqxnbMphljjU0iFvlxk3zKcFQXYqGrpkm-Iuls&_nc_sid=5e9851&_nc_ht=instagram.ftlv5-1.fna.fbcdn.net&_nc_ohc=MUXT-t20WTUQ7kNvwGExqFy&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuMTA4MC5kYXNoX2Jhc2VsaW5lXzEwODBwX3YxIiwieHB2X2Fzc2V0X2lkIjoxNzk1MzU0MTIzODExMDM0NiwiYXNzZXRfYWdlX2RheXMiOjAsInZpX3VzZWNhc2VfaWQiOjEwODI2LCJkdXJhdGlvbl9zIjoxNSwid2F0Y2hfdGltZV9zIjoxNTA1NDEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=6a86b191f4aec05a&_nc_vs=HBksFQIYQGlnX2VwaGVtZXJhbC9BMjQzQjBCNkYwRTM1MkNFODM1OUMyOTNBQzJDQjc5RF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0JDNEY2NzkxMDY5NjIwMzk0QzNFQUU5RUYyODUzRUJDX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaU4qn_0ankPxUCKAJDMywXQC4AAAAAAAAYFmRhc2hfYmFzZWxpbmVfMTA4MHBfdjERAHXoB2WUqQEA&_nc_gid=4itxBB5NWCzoeUFn88LCQQ&_nc_ss=7a32e&_nc_zt=28&oh=00_Af0IzQwx3D5GiIomLNn_VrTaIjteGRR-XFbcfpLqNZ3hCQ&oe=69DF87B8"
+          ],
+          "local_media_path": "./media_cache/jkt48.marsha_3872360129975533515_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.marsha_3872360129975533515_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
         }
       ],
-      "last_check": "2026-04-10T16:49:57.566951",
+      "last_check": "2026-04-11T02:04:56.463747",
       "anchor_tweet_id": "2008228446711755112",
       "last_tweet_id": "2042301650958721447"
     },
@@ -13096,7 +13134,7 @@
           ]
         }
       ],
-      "last_check": "2026-04-10T16:49:58.110436",
+      "last_check": "2026-04-11T02:04:59.974059",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2042301661834617078"
     },
@@ -15050,7 +15088,7 @@
           ]
         }
       ],
-      "last_check": "2026-04-10T16:49:48.019099",
+      "last_check": "2026-04-11T02:04:55.164933",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2042661653070721030"
     },
@@ -15190,7 +15228,7 @@
           ]
         }
       ],
-      "last_check": "2026-04-10T16:49:59.145754",
+      "last_check": "2026-04-11T02:05:01.138178",
       "anchor_tweet_id": "2040845748426973283",
       "last_tweet_id": "2042661742283464922"
     }
