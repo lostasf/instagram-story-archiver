@@ -4296,7 +4296,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-12T03:43:18.964665",
+      "last_check": "2026-06-12T11:42:23.810508",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2065156381767065719"
     },
@@ -18994,7 +18994,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-12T03:43:19.742303",
+      "last_check": "2026-06-12T11:42:24.978920",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2065156385902579894"
     },
@@ -25555,7 +25555,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-12T03:43:15.834971",
+      "last_check": "2026-06-12T11:42:23.029482",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2064793562470817916"
     },
@@ -28113,9 +28113,28 @@
           "media_types": [
             "video"
           ]
+        },
+        {
+          "story_id": "3917716910351987984",
+          "instagram_username": "jkt48.delynn",
+          "archived_at": "2026-06-12T11:42:28.946184",
+          "taken_at": 1781248269,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://scontent-waw2-2.cdninstagram.com/o1/v/t2/f2/m78/AQNr9dDEja8-VF1LIkxaweMMwelef3SJ2kMPNiu8c5WrnVjtY1739xpn651FYrqL9ljElAbTteLPQQTw9pfFRJWovX6f7smSEsS5Zx8.mp4?_nc_cat=105&_nc_sid=5e9851&_nc_ht=scontent-waw2-2.cdninstagram.com&_nc_ohc=IYCXnNvS7BEQ7kNvwE8llGM&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTc5NjUxNTIwNzgwOTExODIsImFzc2V0X2FnZV9kYXlzIjowLCJ2aV91c2VjYXNlX2lkIjoxMDgyNiwiZHVyYXRpb25fcyI6NiwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=6b85776b3db90208&_nc_vs=HBkcFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzBCNEI0Qzc5ODJERjAyMjU5QjZBNTZCOTc0QjY1MEEwX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbczpq_vc3pPxUCKAJDMywXQBgAAAAAAAAYEmRhc2hfYmFzZWxpbmVfMV92MREAdegHZZSpAQA&_nc_gid=qNvXKTWZHIWhbPMp8dCwaQ&_nc_ss=7a22e&_nc_zt=28&oh=00_Af-O7Fign7mNT0N936SYkbbRpD_FNGA7BURG0DJ4vE0ZUw&oe=6A2DDFF2"
+          ],
+          "local_media_path": "./media_cache/jkt48.delynn_3917716910351987984_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.delynn_3917716910351987984_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
         }
       ],
-      "last_check": "2026-06-12T03:43:20.630858",
+      "last_check": "2026-06-12T11:42:25.806157",
       "anchor_tweet_id": "2040845748426973283",
       "last_tweet_id": "2065156396346409037"
     }
