@@ -4296,7 +4296,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-14T03:52:18.670899",
+      "last_check": "2026-06-14T06:47:51.079741",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2065156381767065719"
     },
@@ -18994,7 +18994,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-14T03:52:19.333305",
+      "last_check": "2026-06-14T06:47:51.929964",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2065156385902579894"
     },
@@ -25610,9 +25610,28 @@
           "media_types": [
             "video"
           ]
+        },
+        {
+          "story_id": "3918978212550655748",
+          "instagram_username": "jkt48.lily_",
+          "archived_at": "2026-06-14T06:47:51.050153",
+          "taken_at": 1781398629,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fcuu1-1.fna.fbcdn.net/o1/v/t2/f2/m78/AQM-UQQum_eGND5P8O2DQM0-pZQElfGKgfHio8MGC-XGLvrj2lIdNcCtz09cKqwEv0lrfQlGSVJUIprNRHrnoJWenzOIgQ33hDpjnJ4.mp4?_nc_cat=106&_nc_oc=Adpp0I-lGBRo6CbRPV9v8Z6a1-W9ASm7Ina4uFOv2-T7GNYcEdfZ7SGgfRIdWsZhdBgBmrIgxXJB4Kt2nERI-IzM&_nc_sid=5e9851&_nc_ht=instagram.fcuu1-1.fna.fbcdn.net&_nc_ohc=8_At0IZ4VzYQ7kNvwFYKprj&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uU1RPUlkuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTc5NDM2OTc5NDEyMTYwNjYsImFzc2V0X2FnZV9kYXlzIjowLCJ2aV91c2VjYXNlX2lkIjoxMDEwMCwiZHVyYXRpb25fcyI6MTMsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=ac2fca84d272dda7&_nc_vs=HBksFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0I3NDIzRTZDRDk4RjRFQTVBMTYyQjlDQ0MwOEEzMEFCX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhRaWdfeHB2X3BsYWNlbWVudF9wZXJtYW5lbnRfdjIvOTU0REFCQ0FCNDc0NzM1OTFEREZDMDMwNDY1Q0JGOERfYXVkaW9fZGFzaGluaXQubXA0FQICyAESACgAGAAbAogHdXNlX29pbAExEnByb2dyZXNzaXZlX3JlY2lwZQExFQAAJoTt8dvX7N8_FQIoAkMzLBdAKzMzMzMzMxgSZGFzaF9iYXNlbGluZV8xX3YxEQB16Adl6J0BAA&_nc_gid=YBz34s1yb9dU_vR92c7PiA&_nc_zt=28&_nc_ss=7a22e&oh=00_Af-p8b4cZVZjaJbiVa7FzeW3_wdEKXHgMnk6fFqMcu-S7Q&oe=6A2FFF03"
+          ],
+          "local_media_path": "./media_cache/jkt48.lily__3918978212550655748_0.mp4",
+          "media_type": "video",
+          "local_media_paths": [
+            "./media_cache/jkt48.lily__3918978212550655748_0.mp4"
+          ],
+          "media_types": [
+            "video"
+          ]
         }
       ],
-      "last_check": "2026-06-14T03:52:17.808612",
+      "last_check": "2026-06-14T06:47:49.416785",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2065859179550810493"
     },
@@ -28229,7 +28248,7 @@
           ]
         }
       ],
-      "last_check": "2026-06-14T03:52:19.996055",
+      "last_check": "2026-06-14T06:47:52.629353",
       "anchor_tweet_id": "2040845748426973283",
       "last_tweet_id": "2065859210596978965"
     }
