@@ -5346,7 +5346,7 @@
           ]
         }
       ],
-      "last_check": "2026-07-25T09:44:10.479541",
+      "last_check": "2026-07-25T16:54:21.212409",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2079631736485327310"
     },
@@ -21964,7 +21964,7 @@
           ]
         }
       ],
-      "last_check": "2026-07-25T09:44:11.086654",
+      "last_check": "2026-07-25T16:54:21.784677",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2080719687474954497"
     },
@@ -31646,7 +31646,7 @@
           ]
         }
       ],
-      "last_check": "2026-07-25T09:44:09.856426",
+      "last_check": "2026-07-25T16:54:20.721952",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2080356205843657147"
     },
@@ -36444,9 +36444,28 @@
           "media_types": [
             "image"
           ]
+        },
+        {
+          "story_id": "3949105329371412314",
+          "instagram_username": "jkt48.delynn",
+          "archived_at": "2026-07-25T16:54:24.134871",
+          "taken_at": 1784990062,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://instagram.fcjs2-1.fna.fbcdn.net/v/t51.82787-15/757602766_17971696152091182_4113992162309319021_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=103&ig_cache_key=Mzk0OTEwNTMyOTM3MTQxMjMxNA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6IlNUT1JZLnhwaWRzLjEzMjAuc2RyLnJlZ3VsYXJfcGhvdG8uQzIifQ%3D%3D&_nc_ohc=suPwIF-d0YkQ7kNvwEHjLCP&_nc_oc=AdqVq3vxDxG59GS2TKtWjl4kORWXNOuBsHJSn8DJnD8yF8yHeaszjmTWl7TYTTaO0h5NsuZ48sC2DAHWenRdTaio&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=instagram.fcjs2-1.fna&_nc_gid=zOjhEBK2LfFeiyi0_gvjkg&_nc_ss=7a22e&oh=00_AQDIOeqkbxLR21wylWfgkuRG78RqvmF7hBFvBOKATWxGuw&oe=6A6AAE42"
+          ],
+          "local_media_path": "./media_cache/jkt48.delynn_3949105329371412314_0.jpg",
+          "media_type": "image",
+          "local_media_paths": [
+            "./media_cache/jkt48.delynn_3949105329371412314_0.jpg"
+          ],
+          "media_types": [
+            "image"
+          ]
         }
       ],
-      "last_check": "2026-07-25T09:44:11.760198",
+      "last_check": "2026-07-25T16:54:23.154614",
       "anchor_tweet_id": "2040845748426973283",
       "last_tweet_id": "2080719695402119665"
     }
