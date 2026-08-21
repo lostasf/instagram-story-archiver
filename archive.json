@@ -5897,7 +5897,7 @@
           ]
         }
       ],
-      "last_check": "2026-08-21T01:08:09.986450",
+      "last_check": "2026-08-21T08:37:03.610024",
       "anchor_tweet_id": "2007939230027403404",
       "last_tweet_id": "2089766674602008928"
     },
@@ -25516,7 +25516,7 @@
           ]
         }
       ],
-      "last_check": "2026-08-21T01:08:10.817026",
+      "last_check": "2026-08-21T08:37:04.559200",
       "anchor_tweet_id": "2008954017238704288",
       "last_tweet_id": "2090491974738489403"
     },
@@ -37779,9 +37779,28 @@
           "media_types": [
             "video"
           ]
+        },
+        {
+          "story_id": "3968394653338524491",
+          "instagram_username": "jkt48.lily_",
+          "archived_at": "2026-08-21T08:37:03.565166",
+          "taken_at": 1787289528,
+          "media_count": 1,
+          "tweet_ids": [],
+          "media_urls": [
+            "https://scontent-cgk1-2.cdninstagram.com/v/t51.82787-15/778025501_17978841444095170_7877428751820440749_n.jpg?stp=dst-jpg_e35_tt6&_nc_cat=107&ig_cache_key=Mzk2ODM5NDY1MzMzODUyNDQ5MQ%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6IlNUT1JZLnhwaWRzLjExNzkuc2RyLnJlZ3VsYXJfcGhvdG8uQzMifQ%3D%3D&_nc_ohc=RU0hZy31wPgQ7kNvwHwN0Yc&_nc_oc=AdrulL5Cg_DCuwVncTLV9euM1N8XXcTbLOi_679I3WafQdwOcNWB_hkJOxuOuEAvVxM&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=scontent-cgk1-2.cdninstagram.com&_nc_gid=Z4OAK6aNyx2cS0RREf3UjQ&_nc_ss=7a22e&oh=00_AQHYGmeyqCRV7fRRPVAuvPz4Meg262U7BZrZ3RhW7CMrLw&oe=6A8DB508"
+          ],
+          "local_media_path": "./media_cache/jkt48.lily__3968394653338524491_0.jpg",
+          "media_type": "image",
+          "local_media_paths": [
+            "./media_cache/jkt48.lily__3968394653338524491_0.jpg"
+          ],
+          "media_types": [
+            "image"
+          ]
         }
       ],
-      "last_check": "2026-08-21T01:08:07.946508",
+      "last_check": "2026-08-21T08:37:01.370189",
       "anchor_tweet_id": "2023452276640141355",
       "last_tweet_id": "2090491939950862475"
     },
@@ -43618,7 +43637,7 @@
           ]
         }
       ],
-      "last_check": "2026-08-21T01:08:11.415696",
+      "last_check": "2026-08-21T08:37:05.275974",
       "anchor_tweet_id": "2040845748426973283",
       "last_tweet_id": "2090491985236832598"
     }
